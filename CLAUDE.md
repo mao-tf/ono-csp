@@ -1,0 +1,86 @@
+# csp — Crystal Structure Prediction Package
+
+大野論文（Ono et al., JACS submitted）の結晶構造予測手法を再現・パッケージ化し GitHub + Zenodo で公開するプロジェクト。
+
+**全体仕様書**: `spec.md` を参照（論文対応表・GUI設計・ファイル構成など）
+
+---
+
+## ディレクトリ規則
+
+- `ono_paper/` — このリポジトリ（ソースコードのみ）
+- `ono_paper_dir/` — 計算結果・設定ファイル（ローカル・HPC共通）※ `auto_opt_dir/` と同じ規則
+
+## 計算パイプライン概要
+
+| Step | 内容 | 計算手法 |
+|------|------|----------|
+| 1a | 層内 vdW 粗探索 | vdW剛体球 → S=a×b 最小化 |
+| 1b | 層内 DFT-D 精密化 | Gaussian16: B3LYP-D3(BJ)/6-311G**, BSSE |
+| 2 | 長軸傾斜マップ | DFT-D → E_intra(6) ヒートマップ |
+| 3 | 層間スタッキング | vdW V(x,y) マップ + DFT-D E_inter(7) |
+| 4a/4b | ねじれ・不均一傾斜精密化 | DFT-D → E_int(near) 最小化 |
+| 5 | Transfer integral | Gaussian16: B3LYP/6-31G*, 松井先生コード |
+
+**使わないもの**: Amber力場、遠距離相互作用外挿（G1〜G5）
+
+## 主要変数（論文の11変数）
+
+- α: 分子面とグライド面のなす角（Step 1, 初期値 ≈25°）
+- a, b: 層内格子定数
+- θ_incl, φ_incl: 長軸傾斜角・方向（Step 2）
+- θ_twist: ねじれ角（Step 4a, G形用）
+- θ'_incl, φ'_incl: 不均一傾斜（Step 4b, N形用）
+- x, y, z: 層間ズレ・間距離（Step 3）
+
+## UI
+
+Streamlit（英語）、7タブ構成（Tab 1: Molecule Setup〜Tab 7: Transfer Integrals）
+
+---
+
+## auto_opt からの流用コード
+
+リポジトリ: `/Users/miyoshimao/Working/auto_opt/`
+
+| 流用元 | 使用用途 | コピー先 |
+|--------|---------|---------|
+| `src/auto_opt/utils.py` | `place_monomer()`, `vdw_radius()`, `R2atom()`, `Rod()`, `read_xyz()` | `src/csp/structure/` に組み込み |
+| `src/auto_opt/cluster.py` | SGE ジョブ投入（qsub/qstat） | `src/csp/dft/job_cluster.py` |
+| `src/auto_opt/app.py` | Streamlit UI パターン（HPC設定UI、SCPコマンド表示） | `app.py` の参考 |
+| `src/auto_opt/plot/make_cluster_xyz.py` | py3Dmol 3D表示ロジック | `src/csp/plot/viewer3d.py` |
+| `src/auto_opt/plot/energy_map.py` | Plotly ヒートマップ | `src/csp/plot/map2d.py` |
+
+### place_monomer() の注意点
+
+`auto_opt/utils.py` の `place_monomer()` はグライド対称・スクリュー対称の配置に対応している。
+csp では「グライド対称のみ」を使うので引数の使い方に注意:
+- `phi` → α（ヘリンボーン角の半分）
+- `alpha` → θ_incl（長軸傾斜）
+- `monomer_dir` → 分子 XYZ/CSV のディレクトリ
+
+### vdW スキャンロジックの参考
+
+`src/auto_opt/vdw/sweep_phi.py` に vdW 接触スキャンのロジックがある。
+ただし csp では変数体系が異なる（αスキャン vs φスキャン）ので、参考程度に。
+
+---
+
+## HPC 設定
+
+- ホスト: `miyoshi@133.11.68.31`（スパコン）
+- SGE キューシステム（qsub/qstat/qacct）
+- Gaussian16 環境: HPC 上にある（パスは HPC の `.bashrc` 参照）
+- 作業ディレクトリ: HPC 上の `~/Working/ono_paper_dir/`
+
+## 分子データ
+
+`data/molecules/` にポリアセン XYZ（B3LYP-D3/6-311G** 最適化済み）:
+- `naphthalene.xyz`, `anthracene.xyz`, `tetracene.xyz`, `pentacene.xyz`, `hexacene.xyz`
+- 大野さん・小野さんから取得（まだない場合は Gaussian で最適化が必要）
+
+## 公開予定
+
+- GitHub: `MaoMiyoshi/ono-csp`（リポジトリ名は後で確定）
+- Zenodo で DOI 取得（GitHub Release から自動生成）
+- 論文引用: Methods section に URL + DOI を記載
