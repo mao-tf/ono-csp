@@ -32,9 +32,13 @@
 - エネルギー計算: `B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2` (Gaussian16)
 - Transfer integral: `B3LYP/6-31g*` で HOMO 取得 → HOMO-HOMO オーバーラップ積分
 - BSSE補正: Counterpoise法
-- 分散補正は **D3 (zero damping) = `gd3`**。論文 METHOD の引用文献69が
-  Grimme のオリジナル D3 論文 (JCP 2010, 132, 154104) であり、BJ damping 論文
-  (JCC 2011) は引用されていないため。※大野さんの実際の入力ファイルで要最終確認
+- 分散補正は **D3 (zero damping) = `gd3`** で**確定**（2026-07-04確認）。
+  大野さんの実コード `legacy/ono_scripts/stepwise_optimization/make_step*.py` の
+  ルート行が `#P TEST b3lyp/6-311G** EmpiricalDispersion=GD3 counterpoise=2`。
+  論文 METHOD の引用文献69（Grimme JCP 2010 = zero damping版）とも一致
+- **要確認**: transfer integral の MO 計算レベル。論文 METHOD は「B3LYP/6-31G*」だが、
+  大野さんの `legacy/ono_scripts/tcal_csv/tcal_csv.py` は `#pbepbe/6-311G**` を使用。
+  どちらが論文の図に使われた設定か大野さんに確認する
 
 **対象分子（プリセット）**:
 - naphthalene (n=2)、anthracene (n=3)、tetracene (n=4)、pentacene (n=5)、hexacene (n=6)
