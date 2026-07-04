@@ -1,14 +1,19 @@
 """Gaussian16 (.gjf) input file generation.
 
 Implements the Step 1b dimer input template from spec.md ("Gaussian16 入力
-テンプレート"): B3LYP-D3(BJ)/6-311G** with Counterpoise=2 BSSE correction,
+テンプレート"): B3LYP-D3/6-311G** with Counterpoise=2 BSSE correction,
 one fragment per monomer.
+
+The dispersion keyword is `gd3` (zero damping), not `gd3bj`: the paper's
+METHOD section cites Grimme's original D3 paper (J. Chem. Phys. 2010, 132,
+154104), not the BJ-damping one. To be confirmed against Ono's actual input
+files once legacy/ono_scripts/ lands.
 """
 from __future__ import annotations
 
 from typing import List, Sequence
 
-DEFAULT_KEYWORDS = "# B3LYP empiricaldispersion=gd3bj 6-311g** counterpoise=2 nosymm"
+DEFAULT_KEYWORDS = "# B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2 nosymm"
 
 
 def _atom_block(symbols: Sequence[str], coords) -> str:

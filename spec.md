@@ -29,9 +29,12 @@
 | UI | Streamlit（英語） |
 
 **DFT計算設定（論文 METHOD section より）**:
-- エネルギー計算: `B3LYP empiricaldispersion=gd3bj 6-311g** counterpoise=2` (Gaussian16)
+- エネルギー計算: `B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2` (Gaussian16)
 - Transfer integral: `B3LYP/6-31g*` で HOMO 取得 → HOMO-HOMO オーバーラップ積分
 - BSSE補正: Counterpoise法
+- 分散補正は **D3 (zero damping) = `gd3`**。論文 METHOD の引用文献69が
+  Grimme のオリジナル D3 論文 (JCP 2010, 132, 154104) であり、BJ damping 論文
+  (JCC 2011) は引用されていないため。※大野さんの実際の入力ファイルで要最終確認
 
 **対象分子（プリセット）**:
 - naphthalene (n=2)、anthracene (n=3)、tetracene (n=4)、pentacene (n=5)、hexacene (n=6)
@@ -73,7 +76,7 @@ E(接触) = E(ダイマー) - 2×E(モノマー)  [BSSE補正済み]
 
 **Gaussian16 入力テンプレート**:
 ```
-# B3LYP empiricaldispersion=gd3bj 6-311g** counterpoise=2 nosymm
+# B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2 nosymm
 
 {分子名} dimer step1 alpha={alpha:.1f} a={a:.3f} b={b:.3f}
 
@@ -246,7 +249,7 @@ Left: α vs S=a×b plot (Plotly)      Right: layer structure preview (2D)
 Host: [miyoshi@133.11.68.31]   Work dir: [/home/miyoshi/Working/ono_paper_dir]
 
 [Gaussian Keywords]
-# B3LYP empiricaldispersion=gd3bj 6-311g** counterpoise=2 nosymm
+# B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2 nosymm
 
 [Generate & Submit Jobs]  [Check Status]
 

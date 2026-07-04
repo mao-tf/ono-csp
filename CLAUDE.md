@@ -16,7 +16,7 @@
 | Step | 内容 | 計算手法 |
 |------|------|----------|
 | 1a | 層内 vdW 粗探索 | vdW剛体球 → S=a×b 最小化 |
-| 1b | 層内 DFT-D 精密化 | Gaussian16: B3LYP-D3(BJ)/6-311G**, BSSE |
+| 1b | 層内 DFT-D 精密化 | Gaussian16: B3LYP-D3/6-311G** (`gd3`, zero damping), BSSE |
 | 2 | 長軸傾斜マップ | DFT-D → E_intra(6) ヒートマップ |
 | 3 | 層間スタッキング | vdW V(x,y) マップ + DFT-D E_inter(7) |
 | 4a/4b | ねじれ・不均一傾斜精密化 | DFT-D → E_int(near) 最小化 |

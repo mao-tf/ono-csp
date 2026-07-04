@@ -36,7 +36,7 @@ MOLECULE_DIR = ROOT / "data" / "molecules"
 EXAMPLE_DIR = ROOT / "example" / "pentacene"
 PRESET_MOLECULES = ["naphthalene", "anthracene", "tetracene", "pentacene", "hexacene"]
 
-GAUSSIAN_KEYWORDS = "# B3LYP empiricaldispersion=gd3bj 6-311g** counterpoise=2 nosymm"
+GAUSSIAN_KEYWORDS = "# B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2 nosymm"
 
 st.set_page_config(page_title="csp — Crystal Structure Prediction", layout="wide")
 st.title("csp — Crystal Structure Prediction")
