@@ -4,16 +4,18 @@
 GUI の各タブは、ユーザーが自分の CSV をドロップするまでここのファイルを
 サンプルとして表示します（spec.md「実行方式」参照）。
 
-ファイルはまだ未受領です。受領したら以下の名前で置いてください
-（列名が異なる場合は GUI 側の列選択デフォルトを合わせて調整します）:
+ファイルはまだ未受領です。legacy スクリプトの実際の出力フォーマット
+（spec.md「大野コード対応表」で確認済み）に合わせ、以下の名前・列で置いてください:
 
-| ファイル | 内容 | 対応タブ |
-|---------|------|---------|
-| `step1_vdw.csv` | α vs S=a×b（vdW 粗探索） | Tab 2 |
-| `step1_dft.csv` | α vs E_intra(8)（DFT-D 精密化） | Tab 3 |
-| `step2_map.csv` | θ_incl, φ_incl, E_intra(6) マップ | Tab 4 |
-| `step3_N1.csv` | x, y, V, E_inter(7)（N1 スタッキング） | Tab 5 |
-| `step3_N2.csv` | 同上（N2 スタッキング） | Tab 5 |
-| `step4a_twist.csv` | θ_twist vs E_int(near) | Tab 6a |
-| `step4b_incl.csv` | θ'_incl vs E_int(near) | Tab 6b |
-| `transfer_integrals.csv` | 多形別・接触タイプ別 J | Tab 7 |
+| ファイル | 列 | 対応タブ |
+|---------|-----|---------|
+| `step1_init_params.csv` | a, b, theta, status | Tab 2（vdW 初期候補） |
+| `step1.csv` | a, b, theta, E, E_p1, E_p2, E_t, status, file_name | Tab 3（E_intra(8) 山登り履歴） |
+| `step2_para.csv` | z, Et, Ep | Tab 4（長軸シフトスキャン） |
+| `step3_para.csv` | cx, cy, cz, a, b, theta, Rt, Rp, E, …（per-dimer E） | Tab 5（層間最適化） |
+| `step2_twist.csv` | a, b, theta, Rt, A2, E, E_p1, E_t, … | Tab 6a（twist 変種） |
+| `step3_twist.csv` | cx, cy, cz, …, E | Tab 6b |
+| `transfer_integrals.csv` | 任意（例: a, b, theta, J_t, J_p または polymorph, contact, J） | Tab 7 |
+
+tcal の `result.txt`（スペース区切り）は CSV に変換してから置いてください。
+列名が多少違っても GUI 側の列選択で対応できますが、上記に合わせるとデフォルトで正しく表示されます。

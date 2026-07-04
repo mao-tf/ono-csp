@@ -1,15 +1,12 @@
-"""Molecule loading and rigid-body placement utilities.
+"""Molecule loading and alignment.
 
-Ported from auto_opt (`auto_opt/utils.py`): `vdw_radius`, `R2atom`, `Rod`,
-`read_xyz`. See CLAUDE.md for background on the auto_opt -> csp reuse.
+`vdw_radius`, `R2atom`, `Rod`, `read_xyz` are ported from auto_opt
+(`auto_opt/utils.py`); they are shared with Ono's legacy utils.py, which
+uses the same Bondi radii and Rodrigues rotation.
 
-csp only ever uses glide symmetry (no screw axis), and its monomer data is
-plain XYZ (not the CSV-with-R-column format auto_opt uses), so `Molecule` /
-`load_molecule` / `place_monomer` below are a csp-specific reworking of
-auto_opt's `place_monomer()` rather than a direct port. Parameter naming
-follows csp's own variables (alpha, theta_incl) instead of auto_opt's
-(phi, alpha) — see CLAUDE.md "place_monomer() の注意点" for the mapping
-between the two.
+Rigid-body placement into the herringbone layer lives in
+`structure.intralayer` (Ono's A2/A3 convention) — this module only loads a
+monomer XYZ and aligns it to a reproducible principal-axis frame.
 """
 from __future__ import annotations
 
@@ -118,35 +115,3 @@ def load_molecule(name_or_path: str | Path, molecule_dir: str | Path | None = No
 
     radii = np.array([vdw_radius(s) for s in symbols], dtype=float)
     return Molecule(name=name, symbols=symbols, coords=coords, radii=radii)
-
-
-def place_monomer(
-    molecule: Molecule,
-    tx: float, ty: float, tz: float,
-    alpha: float, theta_incl: float = 0.0,
-) -> np.ndarray:
-    """Rotate and translate a copy of `molecule` into the lab (layer) frame.
-
-    Rotation order (glide symmetry only — csp never uses the screw variant,
-    so there is no `beta` term):
-      1. rotate by `alpha` about -x (the molecule's long axis) — this is the
-         glide/herringbone half-angle between the molecular plane and the
-         glide plane (Step 1's main variable).
-      2. rotate by `theta_incl` about z — long-axis inclination (Step 2).
-      3. translate by (tx, ty, tz).
-
-    This mirrors auto_opt's `place_monomer(phi=alpha, alpha=theta_incl,
-    beta=0.0)` — see CLAUDE.md for why the argument names swap between the
-    two packages (auto_opt's molecules stand upright; csp's polyacenes lie
-    flat, so the roles of the two rotation axes are reversed).
-
-    Returns the rotated+translated (N, 3) coordinate array. Use
-    `molecule.symbols` / `molecule.radii` (same atom order) alongside it.
-    """
-    ex = np.array([1.0, 0.0, 0.0])
-    ez = np.array([0.0, 0.0, 1.0])
-    xyz = molecule.coords
-    xyz = xyz @ Rod(-ex, alpha).T
-    xyz = xyz @ Rod(ez, theta_incl).T
-    xyz = xyz + np.array([tx, ty, tz])
-    return xyz

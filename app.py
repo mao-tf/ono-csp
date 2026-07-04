@@ -5,12 +5,13 @@ Usage:
   streamlit run app.py
 
 Reproduces the structure-search pipeline of Ono et al. (JACS, submitted).
-See spec.md for the full method-to-tab mapping.
+See spec.md for the full method-to-tab mapping and for how each tab maps to
+Ono's legacy scripts (legacy/ono_scripts/).
 
 Execution policy (spec.md "実行方式", meeting 2026-07-04):
 - The Step 1a vdW scan runs directly in this GUI (it completes on a laptop).
-- The DFT steps (1b, 2, 3, 4a/4b, 5) are run from the command line, not from
-  the GUI — each tab shows how to run them and displays results instead.
+- The DFT steps run from the command line with the legacy scripts — each tab
+  shows the commands and displays results instead.
 - Every results section accepts a drag & dropped CSV; until one is dropped it
   falls back to the precomputed sample results bundled in example/pentacene/.
 """
@@ -21,13 +22,17 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Sequence
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from csp.structure.molecule import load_molecule, _VDW  # noqa: E402
+from csp.structure.intralayer import cluster9, monomer_csv  # noqa: E402
+from csp.vdw.contact import step1a_scan  # noqa: E402
 from csp.plot.viewer3d import to_xyz_string, render_3d_html  # noqa: E402
 from csp.plot.map2d import build_heatmap_figure  # noqa: E402
 
@@ -36,7 +41,9 @@ MOLECULE_DIR = ROOT / "data" / "molecules"
 EXAMPLE_DIR = ROOT / "example" / "pentacene"
 PRESET_MOLECULES = ["naphthalene", "anthracene", "tetracene", "pentacene", "hexacene"]
 
-GAUSSIAN_KEYWORDS = "# B3LYP empiricaldispersion=gd3 6-311g** counterpoise=2 nosymm"
+# Route line used by Ono's legacy input generators (make_step*.py)
+GAUSSIAN_ROUTE = "#P TEST b3lyp/6-311G** EmpiricalDispersion=GD3 counterpoise=2"
+LEGACY_DIR = "legacy/ono_scripts/stepwise_optimization"
 
 st.set_page_config(page_title="csp — Crystal Structure Prediction", layout="wide")
 st.title("csp — Crystal Structure Prediction")
@@ -86,6 +93,8 @@ def source_badge(source: str) -> None:
         st.caption("Showing **your uploaded results**.")
     elif source == "sample":
         st.caption("Showing **precomputed sample results** (example/pentacene/). Drop a CSV above to replace.")
+    elif source == "scan":
+        st.caption("Showing **the scan you just ran in this GUI**.")
 
 
 def _numeric_columns(df: pd.DataFrame) -> list[str]:
@@ -106,12 +115,14 @@ def line_plot_section(
     key_prefix: str,
     x_candidates: Sequence[str],
     y_candidates: Sequence[str],
+    agg_min: bool = False,
 ) -> None:
     """x-vs-y line plot with column pickers.
 
-    Column names in Ono's result files are not fixed yet, so the axes default
-    to the first match from `x_candidates`/`y_candidates` but stay
-    user-selectable.
+    Axes default to the first match from `x_candidates`/`y_candidates` but
+    stay user-selectable. With `agg_min`, offers taking the minimum of y over
+    all other parameters at each x (the optimization envelope, e.g. best E
+    per theta from a hill-climb history CSV).
     """
     numeric = _numeric_columns(df)
     if len(numeric) < 2:
@@ -127,7 +138,14 @@ def line_plot_section(
         "Y axis", numeric, index=_default_index(numeric, y_candidates, 1),
         key=f"{key_prefix}_y",
     )
-    fig = px.line(df.sort_values(x_col), x=x_col, y=y_col, markers=True)
+    df_plot = df
+    if agg_min:
+        if st.checkbox(
+            "Minimum over all other parameters at each X (optimization envelope)",
+            value=True, key=f"{key_prefix}_agg",
+        ):
+            df_plot = df.groupby(x_col, as_index=False)[y_col].min()
+    fig = px.line(df_plot.sort_values(x_col), x=x_col, y=y_col, markers=True)
     fig.update_layout(margin=dict(l=20, r=20, t=30, b=20))
     st.plotly_chart(fig, width="stretch")
     with st.expander("Data table"):
@@ -167,14 +185,21 @@ def heatmap_section(
         st.dataframe(df, width="stretch")
 
 
-def cli_intro(what: str, note: str = "") -> None:
-    """Standard "this step runs from the command line" introduction block."""
-    st.info(
-        f"{what} runs from the command line, not from this GUI "
-        "(it needs Gaussian16 and typically an HPC cluster). "
-        "The packaged CLI commands will be documented here once Ono's "
-        "scripts (legacy/ono_scripts/) are integrated."
-        + (f" {note}" if note else "")
+def render_molecule_3d(symbols, coords, comment: str, key_suffix: str, style_key: str) -> None:
+    style = st.radio(
+        "Style", ["Capped sticks", "Space fill"], horizontal=True, key=style_key
+    )
+    xyz_str = to_xyz_string(symbols, coords, comment=comment)
+    html = render_3d_html(
+        xyz_str,
+        style="spacefill" if style == "Space fill" else "sticks",
+        width=480, height=420,
+    )
+    st.iframe(html, height=440)
+    st.download_button(
+        "Download XYZ", data=xyz_str,
+        file_name=f"{comment.split()[0]}_{key_suffix}.xyz", mime="text/plain",
+        key=f"dl_xyz_{key_suffix}",
     )
 
 
@@ -185,9 +210,9 @@ tab_setup, tab_step1_vdw, tab_step1_dft, tab_step2, tab_step3, tab_step4, tab_st
     "1. Molecule Setup",
     "2. Step 1 – Intralayer vdW Scan",
     "3. Step 1 – DFT-D Optimization",
-    "4. Step 2 – Inclination Map",
+    "4. Step 2 – Long-Axis Shift",
     "5. Step 3 – Interlayer Stacking",
-    "6. Step 4 – Refinement",
+    "6. Step 2/3 – Twist Variant",
     "7. Transfer Integrals",
 ])
 
@@ -226,10 +251,15 @@ with tab_setup:
         if molecule is not None:
             st.session_state["molecule"] = molecule
             st.caption(f"**{molecule.name}** — {molecule.n_atoms} atoms")
+            st.download_button(
+                "Download monomer CSV (X,Y,Z,R — input for the legacy CLI scripts)",
+                data=monomer_csv(molecule),
+                file_name=f"{molecule.name}.csv", mime="text/csv",
+            )
 
         st.divider()
         st.subheader("VdW radius table")
-        st.caption("Editable; used by the vdW contact scans in later tabs.")
+        st.caption("Editable; used by the vdW scan in Tab 2.")
         default_table = pd.DataFrame(
             {"atom": list(_VDW.keys()), "vdW radius (Å)": list(_VDW.values())}
         )
@@ -245,22 +275,10 @@ with tab_setup:
         if molecule is None:
             st.caption("Select or upload a molecule to preview it here.")
         else:
-            style = st.radio(
-                "Style", ["Capped sticks", "Space fill"], horizontal=True, key="setup_style"
-            )
-            xyz_str = to_xyz_string(
+            render_molecule_3d(
                 molecule.symbols, molecule.coords,
-                comment=f"{molecule.name} (principal-axis frame)",
-            )
-            html = render_3d_html(
-                xyz_str,
-                style="spacefill" if style == "Space fill" else "sticks",
-                width=480, height=420,
-            )
-            st.iframe(html, height=440)
-            st.download_button(
-                "Download aligned XYZ", data=xyz_str,
-                file_name=f"{molecule.name}_aligned.xyz", mime="text/plain",
+                f"{molecule.name} (principal-axis frame)",
+                key_suffix="setup", style_key="setup_style",
             )
 
 
@@ -268,163 +286,322 @@ with tab_setup:
 #  Tab 2: Step 1 – Intralayer vdW Scan  (runs in the GUI)
 # ══════════════════════════════════════════════════════════
 with tab_step1_vdw:
+    mol2 = st.session_state.get("molecule")
+
     st.subheader("Run in this GUI")
     st.caption(
-        "The rigid-sphere vdW scan completes on a laptop, so it runs right "
-        "here (no HPC needed)."
+        "Rigid-sphere vdW contact model (same algorithm as legacy "
+        "step1.py --init): for each herringbone half-angle alpha, sweep the "
+        "T-contact direction and find the smallest cell S = a×b compatible "
+        "with T and SP contacts. Initial DFT candidates are the local minima "
+        "of S plus both endpoints."
     )
     c1, c2, c3 = st.columns(3)
     alpha_min = c1.number_input("alpha min (deg)", value=5.0, key="s1vdw_amin")
-    alpha_max = c2.number_input("alpha max (deg)", value=85.0, key="s1vdw_amax")
-    alpha_step = c3.number_input("alpha step (deg)", value=5.0, min_value=0.1, key="s1vdw_astep")
-    vdw_tol = st.number_input("VdW tolerance (Å, overlap threshold)", value=0.0, key="s1vdw_tol")
+    alpha_max = c2.number_input("alpha max (deg)", value=45.0, key="s1vdw_amax")
+    alpha_step = c3.number_input("alpha step (deg)", value=5.0, min_value=0.5, key="s1vdw_astep")
 
-    if st.button("Run vdW Scan", key="s1vdw_run"):
-        st.info(
-            "The scan engine is pending integration of Ono's vdW code "
-            "(legacy/ono_scripts/). Once integrated, the scan will run here "
-            "and its results will appear below."
+    if mol2 is None:
+        st.info("Select a molecule in Tab 1 first.")
+    elif st.button(f"Run vdW Scan ({mol2.name})", key="s1vdw_run"):
+        alphas = list(np.arange(alpha_min, alpha_max + 1e-9, alpha_step))
+        prog = st.progress(0.0, text="Scanning...")
+        df_curves, df_init = step1a_scan(
+            mol2, alphas,
+            radii_overrides=st.session_state.get("vdw_radii_overrides"),
+            progress_callback=lambda f: prog.progress(f),
         )
+        prog.empty()
+        st.session_state["s1vdw_curves"] = df_curves
+        st.session_state["s1vdw_init"] = df_init
+        st.session_state["s1vdw_scan_mol"] = mol2.name
 
     st.divider()
     st.subheader("Results — alpha vs S = a×b")
-    df, src = load_results_csv("s1vdw_results", "step1_vdw.csv")
-    if df is not None:
-        source_badge(src)
-        line_plot_section(
-            df, "s1vdw_plot",
-            x_candidates=["alpha", "α"],
-            y_candidates=["s", "a*b", "ab", "area"],
-        )
-        st.caption(
-            "Clicking a point to preview the corresponding layer structure "
-            "will be added together with the scan engine."
-        )
+
+    df_curves = st.session_state.get("s1vdw_curves")
+    df_init = st.session_state.get("s1vdw_init")
+    src2 = ""
+    if df_init is not None:
+        src2 = "scan"
+        if st.button("Clear scan results", key="s1vdw_clear"):
+            for k in ("s1vdw_curves", "s1vdw_init", "s1vdw_scan_mol"):
+                st.session_state.pop(k, None)
+            st.rerun()
+    else:
+        df_up, src2 = load_results_csv("s1vdw_results", "step1_init_params.csv")
+        if df_up is not None:
+            df_up = df_up.rename(columns={c: c.lower() for c in df_up.columns})
+            if {"a", "b", "theta"} <= set(df_up.columns):
+                df_init = df_up.rename(columns={"s": "S"})
+                if "S" not in df_init.columns:
+                    df_init["S"] = df_init["a"] * df_init["b"]
+            else:
+                st.warning("Expected columns a, b, theta (legacy step1_init_params.csv format).")
+
+    if df_init is not None:
+        source_badge(src2)
+        col_plot, col_3d = st.columns([1, 1])
+
+        with col_plot:
+            fig = go.Figure()
+            if df_curves is not None:
+                env = df_curves.groupby("alpha", as_index=False)["S"].min()
+                fig.add_trace(go.Scatter(
+                    x=env["alpha"], y=env["S"], mode="lines",
+                    name="min S over sweep", line=dict(color="royalblue"),
+                ))
+            fig.add_trace(go.Scatter(
+                x=df_init["theta"], y=df_init["S"], mode="markers",
+                name="initial candidates",
+                marker=dict(size=10, color="tomato"),
+                text=df_init.apply(lambda r: f"a={r['a']}, b={r['b']}", axis=1),
+                hovertemplate="alpha=%{x}<br>S=%{y:.1f} Å²<br>%{text}<extra></extra>",
+            ))
+            fig.update_layout(
+                xaxis_title="alpha (deg, half of herringbone dihedral)",
+                yaxis_title="S = a×b (Å²)",
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
+            st.plotly_chart(fig, width="stretch")
+
+            st.download_button(
+                "Download step1_init_params.csv (input for the DFT step)",
+                data=df_init[["a", "b", "theta"]].assign(status="NotYet").to_csv(index=False),
+                file_name="step1_init_params.csv", mime="text/csv",
+                key="dl_s1vdw_init",
+            )
+            if df_curves is not None:
+                st.download_button(
+                    "Download full sweep curves CSV",
+                    data=df_curves.to_csv(index=False),
+                    file_name="step1_vdw_curves.csv", mime="text/csv",
+                    key="dl_s1vdw_curves",
+                )
+            with st.expander("Candidates table"):
+                st.dataframe(df_init, width="stretch")
+
+        with col_3d:
+            st.markdown("**Layer structure preview (9-molecule cluster)**")
+            if mol2 is None:
+                st.caption("Select a molecule in Tab 1 to preview structures.")
+            elif len(df_init) == 0:
+                st.caption("No candidates to preview.")
+            else:
+                labels = [
+                    f"alpha={r['theta']}  a={r['a']}  b={r['b']}  S={r['S']:.1f}"
+                    + (f"  [{r['kind']}]" if "kind" in df_init.columns else "")
+                    for _, r in df_init.iterrows()
+                ]
+                sel = st.selectbox(
+                    "Candidate", range(len(labels)),
+                    format_func=lambda i: labels[i], key="s1vdw_sel",
+                )
+                row = df_init.iloc[sel]
+                syms, coords = cluster9(
+                    mol2, float(row["a"]), float(row["b"]), float(row["theta"])
+                )
+                render_molecule_3d(
+                    syms, coords,
+                    f"{mol2.name} cluster9 alpha={row['theta']} a={row['a']} b={row['b']}",
+                    key_suffix="s1vdw", style_key="s1vdw_style",
+                )
 
 
 # ══════════════════════════════════════════════════════════
 #  Tab 3: Step 1 – DFT-D Optimization  (CLI; results shown here)
 # ══════════════════════════════════════════════════════════
 with tab_step1_dft:
-    st.subheader("How to run")
-    cli_intro("Step 1b (DFT-D refinement of a, b at each alpha)")
-    st.code(GAUSSIAN_KEYWORDS, language="text")
+    st.subheader("How to run (CLI)")
+    st.info(
+        "Step 1 DFT-D refinement runs on an HPC with Gaussian16 using Ono's "
+        f"scripts in `{LEGACY_DIR}/`. It hill-climbs (a, b) in 0.1 Å steps at "
+        "each fixed alpha, minimizing E_intra(8) = 4·E_t + 2·E_p1 + 2·E_p2 "
+        "(BSSE-corrected dimer interaction energies)."
+    )
+    st.code(
+        f"""# one-time edits in {LEGACY_DIR}:
+#   - make_step1.py / vdw.py: monomer CSV path ('~/path/to/monomer/') — CSV downloadable from Tab 1
+#   - make_step1.py get_one_exe(): Gaussian16 environment; exec_gjf uses pjsub — replace with qsub for SGE
+python step1.py --init --auto-dir /path/to/workdir --monomer-name pentacene \\
+    --num-nodes 4 --num-init 2
+# --init regenerates step1_init_params.csv with the same vdW model as Tab 2;
+# results accumulate in <auto-dir>/step1.csv""",
+        language="bash",
+    )
+    st.code(GAUSSIAN_ROUTE, language="text")
 
     st.divider()
-    st.subheader("Results — alpha vs E_intra(8)")
-    df, src = load_results_csv("s1dft_results", "step1_dft.csv")
+    st.subheader("Results — alpha vs E_intra(8)  (step1.csv)")
+    df, src = load_results_csv("s1dft_results", "step1.csv")
     if df is not None:
         source_badge(src)
         line_plot_section(
             df, "s1dft_plot",
-            x_candidates=["alpha", "α"],
-            y_candidates=["e_intra8", "e_intra(8)", "e_intra", "e"],
-        )
-        st.caption("The energy minimum identifies the R-form (alpha ≈ 25°).")
-
-
-# ══════════════════════════════════════════════════════════
-#  Tab 4: Step 2 – Inclination Map  (CLI; results shown here)
-# ══════════════════════════════════════════════════════════
-with tab_step2:
-    st.subheader("How to run")
-    cli_intro(
-        "Step 2 (long-axis inclination map from the R-form)",
-        note="Scan ranges per spec.md: theta_incl 0–40° (1° step), phi_incl 0–360° (5° step).",
-    )
-    st.code(GAUSSIAN_KEYWORDS, language="text")
-
-    st.divider()
-    st.subheader("Results — E_intra(6) map")
-    df, src = load_results_csv("s2_results", "step2_map.csv")
-    if df is not None:
-        source_badge(src)
-        heatmap_section(
-            df, "s2_map",
-            x_candidates=["theta_incl", "theta"],
-            y_candidates=["phi_incl", "phi"],
-            val_candidates=["e_intra6", "e_intra(6)", "e_intra", "e"],
-            val_label="E_intra(6) (kcal/mol)",
+            x_candidates=["theta", "alpha"],
+            y_candidates=["e", "e_intra8"],
+            agg_min=True,
         )
         st.caption(
-            "G-form: phi_incl = 0°/180° (glide symmetry kept). "
-            "N-form: phi_incl ≈ ±48°/±132° (glide symmetry broken). "
-            "The polar-style axes from the paper (x = theta·cos(phi), "
-            "y = theta·sin(phi)) will be added once the result format is fixed."
+            "E = 4·E_t + 2·E_p1 + 2·E_p2 (kcal/mol). The minimum over the "
+            "hill-climb history at each alpha is the optimized E_intra(8); "
+            "its global minimum identifies the R-form (alpha ≈ 25°)."
         )
+
+
+# ══════════════════════════════════════════════════════════
+#  Tab 4: Step 2 – Long-Axis Shift  (CLI; results shown here)
+# ══════════════════════════════════════════════════════════
+with tab_step2:
+    st.subheader("How to run (CLI)")
+    st.info(
+        "Step 2 (para variant) scans the molecular shift z along the long "
+        "axis at the T-shaped and slipped-parallel contacts, with the lattice "
+        "fixed to the Step 1 optimum (legacy step2_para.py; 41 z-points from "
+        "0 to 4 Å in one Gaussian input via --Link1). This underlies the "
+        "paper's inclination/shift analysis (§2.2)."
+    )
+    st.code(
+        """# put a single-row step2_init_params.csv (a, b, theta = Step 1 optimum) in <auto-dir>
+python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene
+# output: <auto-dir>/step2_para.csv with columns z, Et, Ep (mirrored to -4..4 Å)""",
+        language="bash",
+    )
+    st.code(GAUSSIAN_ROUTE, language="text")
+
+    st.divider()
+    st.subheader("Results — Et / Ep vs z  (step2_para.csv)")
+    df, src = load_results_csv("s2_results", "step2_para.csv")
+    if df is not None:
+        source_badge(src)
+        cols_lower = {c.lower(): c for c in df.columns}
+        if {"z", "et", "ep"} <= set(cols_lower):
+            zc, etc, epc = cols_lower["z"], cols_lower["et"], cols_lower["ep"]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df[zc], y=df[etc], mode="lines+markers", name="E_t (T-shaped)"))
+            fig.add_trace(go.Scatter(x=df[zc], y=df[epc], mode="lines+markers", name="E_p (slipped parallel)"))
+            fig.add_trace(go.Scatter(
+                x=df[zc], y=4 * df[etc] + 2 * df[epc],
+                mode="lines", name="4·E_t + 2·E_p", line=dict(dash="dash"),
+            ))
+            fig.update_layout(
+                xaxis_title="z shift along long axis (Å)",
+                yaxis_title="E (kcal/mol)",
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
+            st.plotly_chart(fig, width="stretch")
+            with st.expander("Data table"):
+                st.dataframe(df, width="stretch")
+        else:
+            line_plot_section(
+                df, "s2_plot",
+                x_candidates=["z"], y_candidates=["et", "ep", "e"],
+            )
 
 
 # ══════════════════════════════════════════════════════════
 #  Tab 5: Step 3 – Interlayer Stacking  (CLI; results shown here)
 # ══════════════════════════════════════════════════════════
 with tab_step3:
-    st.subheader("How to run")
-    cli_intro("Step 3 (interlayer V(x,y) and E_inter(7) maps)")
-    st.code(GAUSSIAN_KEYWORDS, language="text")
+    st.subheader("How to run (CLI)")
+    st.info(
+        "Step 3 (para variant) optimizes the interlayer c-vector (cx, cy, cz) "
+        "by 3×3×3 hill-climbing at fixed intralayer parameters (a, b, theta, "
+        "Rt, Rp). Each point computes 10 interlayer dimers; E averages the "
+        "two stacking patterns and sums the four T-shaped pairs (legacy "
+        "step3_para.py). step3_para_vdw.py additionally provides the vdW "
+        "interlayer-distance map z(x, y) used to pick starting points."
+    )
+    st.code(
+        """# step3_para_init_params.csv: rows of a, b, theta, Rt, Rp, cx, cy, cz (starting points)
+python step3_para.py --auto-dir /path/to/workdir --monomer-name pentacene \\
+    --num-nodes 4 --num-init 2
+# output: <auto-dir>/step3_para.csv (cx, cy, cz, ..., E, per-dimer energies)""",
+        language="bash",
+    )
+    st.code(GAUSSIAN_ROUTE, language="text")
 
     st.divider()
-    form = st.radio("Stacking dataset", ["N1 (→ Type II)", "N2 (→ Type IV)"],
-                    horizontal=True, key="s3_form")
-    sample_file = "step3_N1.csv" if form.startswith("N1") else "step3_N2.csv"
-
-    st.subheader(f"Results — {form}")
-    df, src = load_results_csv(f"s3_results_{sample_file}", sample_file)
+    st.subheader("Results — interlayer energy map  (step3_para.csv)")
+    df, src = load_results_csv("s3_results", "step3_para.csv")
     if df is not None:
         source_badge(src)
         heatmap_section(
-            df, f"s3_map_{sample_file}",
-            x_candidates=["x"],
-            y_candidates=["y"],
-            val_candidates=["e_inter7", "e_inter(7)", "e_inter", "e", "v"],
-            val_label="E_inter(7) or V(x,y)",
+            df, "s3_map",
+            x_candidates=["cx", "x"],
+            y_candidates=["cy", "y"],
+            val_candidates=["e", "e_inter7", "v"],
+            val_label="E_inter (kcal/mol)",
         )
         st.caption(
-            "Switch the Value column between V (vdW volume) and E_inter(7) "
-            "if your CSV contains both."
+            "Hill-climb output is sparse (visited points only); a dense "
+            "V(x,y) map from step3_para_vdw can be dropped here too."
         )
 
 
 # ══════════════════════════════════════════════════════════
-#  Tab 6: Step 4 – Refinement  (CLI; results shown here)
+#  Tab 6: Step 2/3 – Twist Variant  (CLI; results shown here)
 # ══════════════════════════════════════════════════════════
 with tab_step4:
-    sub_twist, sub_incl = st.tabs([
-        "6a. Twist (G-form → Type III)",
-        "6b. Non-uniform Inclination (N-form → Type IV)",
+    sub_2t, sub_3t = st.tabs([
+        "Step 2 twist (a, b re-opt with Rt, A2)",
+        "Step 3 twist (interlayer, twist form)",
     ])
 
-    with sub_twist:
-        st.subheader("How to run")
-        cli_intro(
-            "Step 4a (twist refinement of the G-form)",
-            note="Expected: naphthalene ≈ 13°, anthracene ≈ 9°; no gain for tetracene and longer.",
+    with sub_2t:
+        st.subheader("How to run (CLI)")
+        st.info(
+            "Step 2 (twist variant, → Type III packing with glide symmetry): "
+            "introduces the T-contact long-axis shift Rt and the torsion A2, "
+            "then re-optimizes (a, b) by hill-climbing at each fixed "
+            "(theta, Rt, A2) (legacy step2_twist.py; E = 4·E_t + 2·E_p1). "
+            "Note: the file's header comment mentions pbepbe+D3BJ but the "
+            "route line is B3LYP+GD3 — being confirmed with Ono."
+        )
+        st.code(
+            "python step2_twist.py --auto-dir /path/to/workdir --monomer-name naphthalene \\\n"
+            "    --num-nodes 4 --num-init 2",
+            language="bash",
         )
         st.divider()
-        st.subheader("Results — theta_twist vs E_int(near)")
-        df, src = load_results_csv("s4a_results", "step4a_twist.csv")
+        st.subheader("Results  (step2_twist.csv)")
+        df, src = load_results_csv("s4a_results", "step2_twist.csv")
         if df is not None:
             source_badge(src)
             line_plot_section(
                 df, "s4a_plot",
-                x_candidates=["theta_twist", "twist"],
-                y_candidates=["e_int_near", "e_int(near)", "e_int", "e"],
+                x_candidates=["a2", "rt"],
+                y_candidates=["e"],
+                agg_min=True,
+            )
+            st.caption(
+                "Expected: E minimum at a twist of ≈ 13° for naphthalene, "
+                "≈ 9° for anthracene; no gain for tetracene and longer "
+                "(paper §2.4)."
             )
 
-    with sub_incl:
-        st.subheader("How to run")
-        cli_intro(
-            "Step 4b (non-uniform inclination of the N-form)",
-            note="Compares Type II vs Type IV; expected crossover at tetracene (theta'_incl ≈ 2.5°).",
+    with sub_3t:
+        st.subheader("How to run (CLI)")
+        st.info(
+            "Step 3 (twist variant): interlayer c-vector optimization for the "
+            "twisted (Type III) packing (legacy step3_twist.py)."
+        )
+        st.code(
+            "python step3_twist.py --auto-dir /path/to/workdir --monomer-name naphthalene \\\n"
+            "    --num-nodes 4 --num-init 2",
+            language="bash",
         )
         st.divider()
-        st.subheader("Results — theta'_incl vs E_int(near)")
-        df, src = load_results_csv("s4b_results", "step4b_incl.csv")
+        st.subheader("Results  (step3_twist.csv)")
+        df, src = load_results_csv("s4b_results", "step3_twist.csv")
         if df is not None:
             source_badge(src)
-            line_plot_section(
-                df, "s4b_plot",
-                x_candidates=["theta_incl2", "theta_prime", "theta'_incl", "theta"],
-                y_candidates=["e_int_near", "e_int(near)", "e_int", "e"],
+            heatmap_section(
+                df, "s4b_map",
+                x_candidates=["cx", "x"],
+                y_candidates=["cy", "y"],
+                val_candidates=["e"],
+                val_label="E (kcal/mol)",
             )
 
 
@@ -432,17 +609,32 @@ with tab_step4:
 #  Tab 7: Transfer Integrals  (CLI; results shown here)
 # ══════════════════════════════════════════════════════════
 with tab_step5:
-    st.subheader("How to run")
+    st.subheader("How to run (CLI)")
     st.info(
-        "Transfer integrals are computed from the command line with the "
-        "CSV-batch wrapper around Prof. Matsui's HOMO-HOMO overlap code "
-        "(Gaussian16, B3LYP/6-31g*), prepared by Ono — pending integration "
-        "via legacy/ono_scripts/. The command will be documented here."
+        "Transfer integrals are computed with the CSV-batch workflow in "
+        "`legacy/ono_scripts/tcal_csv/` — a wrapper around Prof. Matsui's "
+        "tcal program (https://github.com/matsui-lab-yamagata/tcal; tcal_1.py "
+        "is Ono's slightly modified copy). For each arrangement row "
+        "(a, b, theta, A2, z) it builds T-shaped and slipped-parallel dimer "
+        "inputs, runs Gaussian16, and extracts the HOMO-HOMO transfer "
+        "integral. NOTE: the legacy inputs use pbepbe/6-311G** while the "
+        "paper's METHOD says B3LYP/6-31G* — being confirmed with Ono."
     )
-    st.code("B3LYP/6-31g*  (HOMO → transfer integral J)", language="text")
+    st.code(
+        """# edit the hardcoded /path/to/tcal_csv/ paths and job.sh for your cluster first
+python tcal_csv.py --init   --auto-dir workdir --monomer-name pentacene   # build inputs
+python tcal_csv.py --qsub   --auto-dir workdir --monomer-name pentacene   # submit Gaussian
+python tcal_csv.py --tcal   --auto-dir workdir --monomer-name pentacene   # run tcal_1.py
+python tcal_csv.py --result --auto-dir workdir --monomer-name pentacene   # collect result.txt""",
+        language="bash",
+    )
 
     st.divider()
-    st.subheader("Results — J per polymorph / contact type")
+    st.subheader("Results — J per arrangement / contact type")
+    st.caption(
+        "Drop a CSV (e.g. result.txt converted to CSV with columns like "
+        "a, b, theta, J_t, J_p)."
+    )
     df, src = load_results_csv("s5_results", "transfer_integrals.csv")
     if df is not None:
         source_badge(src)
@@ -471,6 +663,6 @@ with tab_step5:
         else:
             line_plot_section(
                 df, "s5_plot",
-                x_candidates=["alpha", "theta_incl"],
-                y_candidates=["j", "j_mev"],
+                x_candidates=["theta", "alpha", "z"],
+                y_candidates=["j_t", "j_p", "j"],
             )

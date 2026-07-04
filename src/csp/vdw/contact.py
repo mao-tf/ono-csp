@@ -1,75 +1,133 @@
-"""Rigid-sphere VdW contact distance and Step 1a coarse a,b minimization.
+"""Rigid-sphere VdW contact distance and the Step 1a coarse (a, b) scan.
 
-`vdw_contact_distance` is ported directly from auto_opt (`utils.vdw_R`) — it
-is a generic "how far apart do two rigid-sphere atom sets need to be along a
-given direction to just touch" routine and does not encode any
-molecule/packing-specific geometry, so it is safe to reuse as-is.
+`vdw_contact_distance` is the vectorized equivalent of Ono's `vdw_R`
+(legacy/ono_scripts/stepwise_optimization/vdw.py) and auto_opt's `vdw_R`
+(both compute the same quantity with O(N^2) Python loops).
 
-`min_ab_for_alpha` (Step 1a: for a given herringbone angle alpha, find the
-smallest unit cell a x b satisfying VdW contact for the 8 T-shaped/SP-shaped
-neighbors — spec.md §Step 1a) is NOT yet implemented here. auto_opt's
-equivalent sweep (`vdw/sweep_phi.py`) assumes a 9-molecule a-stack/b-stack
-cluster built for upright (BTBT/DNTT-like) molecules, which is not the same
-neighbor geometry as csp's flat-lying glide layer (T-type x4 + SP-type x4
-around one central molecule, per spec.md). Rather than guess that geometry,
-this is left as a stub pending Ono's legacy scripts (see legacy/ono_scripts/)
-or direct confirmation of the neighbor construction against the paper.
+`step1a_scan` ports Ono's `init_process`/`get_init_para_csv`
+(legacy/ono_scripts/stepwise_optimization/step1.py) exactly:
+
+For each herringbone half-angle alpha (= A3 = the `theta` column of the
+legacy CSVs):
+  1. a_clps / b_clps: contact distance of two parallel (+alpha) molecules
+     pushed along the a-axis (0°) / b-axis (90°) — the smallest possible
+     lattice constants from slipped-parallel contact.
+  2. Sweep the T-contact direction theta_ab over 0..90°: push a -alpha
+     molecule along theta_ab until VdW contact at distance R, giving the
+     lattice (a, b) = 2R(cos, sin) that puts the T neighbor at (a/2, b/2).
+  3. Keep points with a >= a_clps and b >= b_clps (SP neighbors must not
+     overlap); record S = a*b.
+  4. Initial candidates for the DFT step: local minima of S along the sweep
+     (scipy.signal.argrelmin, order=5) plus both endpoints (b-contact-limited
+     and a-contact-limited arrangements).
 """
 from __future__ import annotations
 
 import math
-from typing import List
+from typing import Callable, Iterable, Mapping, Optional, Tuple
 
 import numpy as np
+import pandas as pd
+from scipy import signal
+
+from csp.structure.molecule import Molecule
+from csp.structure.intralayer import to_layer_frame, place_in_layer
 
 
-def vdw_contact_distance(axyz_1: List[List], axyz_2: List[List], theta_deg: float) -> float:
-    """Rigid-sphere contact distance between two atom sets along a direction.
+def vdw_contact_distance(
+    coords_1: np.ndarray, radii_1: np.ndarray,
+    coords_2: np.ndarray, radii_2: np.ndarray,
+    theta_deg: float,
+) -> float:
+    """Push molecule 2 along the xy-direction `theta_deg` until VdW contact.
 
-    `axyz_1`, `axyz_2`: lists of [x, y, z, symbol] (see `molecule.read_xyz`).
-    `theta_deg`: direction (in the xy-plane) along which molecule 2 is pushed
-    away from molecule 1.
-
-    Returns the minimum push distance (Å) along that direction such that no
-    atom pair overlaps (sum of VdW radii). Returns 0.0 if already clear of
-    all contacts.
+    Returns the minimum push distance (Å) such that no atom pair of the two
+    rigid-sphere molecules overlaps; 0.0 if they are already clear.
     """
-    from csp.structure.molecule import vdw_radius
-
-    R1 = np.asarray([[x, y, z] for x, y, z, _ in axyz_1], float)
-    R2 = np.asarray([[x, y, z] for x, y, z, _ in axyz_2], float)
-    r1 = np.asarray([vdw_radius(a[3]) for a in axyz_1], float)
-    r2 = np.asarray([vdw_radius(a[3]) for a in axyz_2], float)
-
     ct = math.cos(math.radians(theta_deg))
     st = math.sin(math.radians(theta_deg))
     eR = np.array([ct, st, 0.0], float)
 
-    D = R2[None, :, :] - R1[:, None, :]
+    D = coords_2[None, :, :] - coords_1[:, None, :]
     R12b = D @ eR
     R12a2 = (D * D).sum(axis=2) - R12b ** 2
 
-    rad_sum = r1[:, None] + r2[None, :]
-    rad_sum_sq = rad_sum ** 2
+    rad_sum_sq = (radii_1[:, None] + radii_2[None, :]) ** 2
     mask = R12a2 < rad_sum_sq
-
     if not np.any(mask):
         return 0.0
 
-    sq = rad_sum_sq[mask] - R12a2[mask]
-    two_r_need = np.maximum(-R12b[mask] + np.sqrt(sq), 0.0)
-    return float(np.max(two_r_need))
+    push = -R12b[mask] + np.sqrt(rad_sum_sq[mask] - R12a2[mask])
+    return float(max(np.max(push), 0.0))
 
 
-def min_ab_for_alpha(*args, **kwargs):
-    """Step 1a coarse a,b scan for a given alpha — not yet implemented.
-
-    See module docstring: needs the T-type (x4) / SP-type (x4) neighbor
-    construction from spec.md §Step 1a, which should come from Ono's
-    existing scripts rather than be guessed here.
-    """
-    raise NotImplementedError(
-        "min_ab_for_alpha: pending Step 1a neighbor geometry — "
-        "see legacy/ono_scripts/ once Ono's existing code is integrated, "
-        "or spec.md §Step 1a for the algorithm description."
+def _effective_radii(mol: Molecule, overrides: Optional[Mapping[str, float]]) -> np.ndarray:
+    if not overrides:
+        return mol.radii
+    table = {str(k).strip().upper(): float(v) for k, v in overrides.items()}
+    return np.array(
+        [table.get(s.strip().upper(), r) for s, r in zip(mol.symbols, mol.radii)],
+        dtype=float,
     )
+
+
+def step1a_scan(
+    mol: Molecule,
+    alphas: Iterable[float],
+    radii_overrides: Optional[Mapping[str, float]] = None,
+    theta_ab_step: float = 1.0,
+    argrelmin_order: int = 5,
+    progress_callback: Optional[Callable[[float], None]] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Step 1a coarse scan (see module docstring).
+
+    Returns (df_curves, df_init):
+    - df_curves: every VdW-feasible sweep point; columns
+      alpha, theta_ab, a, b, S (a, b rounded to 0.1 Å as in the legacy code;
+      S computed from the unrounded values).
+    - df_init: initial candidates for the DFT hill-climb; columns
+      a, b, theta, S, kind ('local_min' / 'b_contact' / 'a_contact'),
+      status='NotYet' — matching the legacy step1_init_params.csv format
+      (theta = alpha).
+    """
+    mol_l = to_layer_frame(mol)
+    radii = _effective_radii(mol_l, radii_overrides)
+    alphas = list(alphas)
+    theta_abs = np.arange(0.0, 90.0 + 1e-9, theta_ab_step)
+
+    curve_rows = []
+    init_rows = []
+    for i_alpha, alpha in enumerate(alphas):
+        c_i = place_in_layer(mol_l.coords, 0, 0, 0, 0.0, +alpha)
+        c_t = place_in_layer(mol_l.coords, 0, 0, 0, 0.0, -alpha)
+        a_clps = vdw_contact_distance(c_i, radii, c_i, radii, 0.0)
+        b_clps = vdw_contact_distance(c_i, radii, c_i, radii, 90.0)
+
+        kept = []  # (theta_ab, a_rounded, b_rounded, S)
+        for theta_ab in theta_abs:
+            R = vdw_contact_distance(c_i, radii, c_t, radii, theta_ab)
+            a = 2 * R * math.cos(math.radians(theta_ab))
+            b = 2 * R * math.sin(math.radians(theta_ab))
+            if (a_clps > a) or (b_clps > b):
+                continue
+            kept.append((theta_ab, round(a, 1), round(b, 1), a * b))
+
+        for theta_ab, a1, b1, S in kept:
+            curve_rows.append((alpha, theta_ab, a1, b1, S))
+
+        if kept:
+            S_arr = np.array([k[3] for k in kept])
+            for idx in signal.argrelmin(S_arr, order=argrelmin_order)[0]:
+                init_rows.append((kept[idx][1], kept[idx][2], alpha, kept[idx][3],
+                                  'local_min', 'NotYet'))
+            init_rows.append((kept[0][1], kept[0][2], alpha, kept[0][3],
+                              'b_contact', 'NotYet'))
+            init_rows.append((kept[-1][1], kept[-1][2], alpha, kept[-1][3],
+                              'a_contact', 'NotYet'))
+
+        if progress_callback:
+            progress_callback((i_alpha + 1) / len(alphas))
+
+    df_curves = pd.DataFrame(curve_rows, columns=['alpha', 'theta_ab', 'a', 'b', 'S'])
+    df_init = pd.DataFrame(init_rows, columns=['a', 'b', 'theta', 'S', 'kind', 'status'])
+    return df_curves, df_init

@@ -48,6 +48,11 @@
 
 ## 計算パイプライン / Calculation Pipeline
 
+> **注意**: 以下の Step 1a〜5 は論文本文（§2.1〜2.8）から起こした初期ドラフト。
+> 大野さんの実コード受領後（2026-07-04）、実際のパイプラインは下の
+> 「大野コード対応表」の3ステップ構成であることが判明した。実装・GUI は
+> 対応表を正とする。
+
 論文の §2.1〜2.8 に対応する 5ステップ構成。全ステップで同じ 11 変数（α, a, b, θ_incl, φ_incl, θ_twist, θ'_incl, φ'_incl, x, y, z）を段階的に導入する。
 
 ### Step 1a: 層内 vdW 粗探索（論文 §2.1 前半）
@@ -211,6 +216,50 @@ E_int(near) = E_intra(6) + 2 × E_inter(7)
 
 以降のワイヤーフレーム中の `[Run DFT Jobs]` 等の DFT 実行ボタンはこの方針により
 「CLI コマンド紹介 + 結果 drag & drop」に置き換えて実装する。
+
+---
+
+## 大野コード対応表 / Legacy Code Mapping（2026-07-04 受領・読解・統合）
+
+大野さんの実パイプラインは3ステップ構成（step1 → step2 para/twist → step3
+para/twist → tcal）で、論文§の5ステップドラフトとは粒度が異なる。
+GUI タブは受領コードに合わせて再構成済み（旧ワイヤーフレーム Tab 4〜6 は置換）。
+
+| legacy (ono_scripts/) | 内容 | csp 統合先 / GUI |
+|---|---|---|
+| stepwise_optimization/vdw.py + step1.py --init | vdW接触モデルで初期(a,b,θ)候補（T接触方向0〜90°掃引、Sの極小＋両端点） | `src/csp/vdw/contact.py step1a_scan` → **Tab 2（GUI内実行・実装済み）** |
+| make_step1.py + step1.py | (a,b) 0.1Å刻み3×3山登りDFT。E_intra(8)=4Et+2Ep1+2Ep2 | gjf生成: `src/csp/dft/make_gjf.py`、ログ解析: `parse_log.py` → Tab 3 |
+| make_step2_para.py + step2_para.py | 長軸シフト z スキャン（0〜4Å×0.1、--Link1で41点/1ファイル）。出力 z,Et,Ep | Tab 4 |
+| make_step2_twist.py + step2_twist.py | Rt（T接触長軸シフト）と A2（ねじれ）導入後 (a,b) 再最適化 | Tab 6a |
+| make_step3_para.py + step3_para.py + step3_para_vdw.py | 層間cベクトル(cx,cy,cz) 3×3×3山登り（10ダイマー/点、2パターン平均）; vdW層間距離マップ z(x,y) | Tab 5 |
+| make_step3_twist.py + step3_twist.py | twist形（Type III）の層間最適化 | Tab 6b |
+| tcal_csv/ | transfer integral 一括計算（松井研 tcal ラッパー） | Tab 7 |
+
+**変数対応**:
+- `theta` (= A3) = ヘリンボーン二面角の半分（論文のα、5〜45°）。z軸まわり回転。T型副格子は −A3
+- `A2` = ねじれ（−x軸まわり回転。step1 では 0）
+- `Rt`, `Rp` = T型 / SP型接触での長軸方向シフト
+- `cx, cy, cz` = 層間 c ベクトル
+- 分子座標系: **長軸 = z**、格子 a = x, b = y。T型隣接 (±a/2, ±b/2)、SP型 (±a,0),(0,±b)
+- モノマー CSV: X,Y,Z,R 列（R = Bondi半径、元素は R2atom で逆引き）。**Tab 1 からダウンロード可**（`intralayer.monomer_csv`）
+
+**counterpoise ログ解析**（`src/csp/dft/parse_log.py`）:
+「SCF Done: E(R…」が 5 本 1 組（超分子 / ghost付き単量体×2 / 単体基底単量体×2）。
+E_int = (E[0] − E[1] − E[2]) × 627.510 kcal/mol。--Link1 連結で複数ペア/1ログ。
+
+**結果CSVフォーマット（GUI の drag & drop 対応列）**:
+- `step1_init_params.csv`: a, b, theta, status
+- `step1.csv`: a, b, theta, E, E_p1, E_p2, E_t, status, file_name
+- `step2_para.csv`: z, Et, Ep
+- `step2_twist.csv`: a, b, theta, Rt, A2, E, E_p1, E_t, status, file_name
+- `step3_para.csv`: cx, cy, cz, a, b, theta, Rt, Rp, E, E_i01…E_ip4, status, file_name
+- tcal: result.txt（スペース区切り J_t J_p）→ CSV 変換して Tab 7 へ
+
+**要確認（大野さんへ）**:
+1. tcal の MO 計算レベル: legacy は `pbepbe/6-311G**`、論文 METHOD は B3LYP/6-31G*
+2. make_step2_twist.py 冒頭コメント「pbepbe+d3bjで計算」とルート行（b3lyp+GD3）の食い違い
+3. モノマー CSV の面内絶対配向（A3=0 で面法線が x か y か）。csp は面法線=x を採用
+   （逆でも theta→90−theta・a/b 入替で等価だが、数値比較時に要注意）
 
 ---
 
