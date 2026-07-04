@@ -55,4 +55,7 @@ legacy/          staging area for Ono's existing CUI scripts
 
 ## License
 
-MIT
+MIT (see `LICENSE`). The bundled `legacy/ono_scripts/tcal_csv/tcal_1.py` is a
+modified copy of [tcal](https://github.com/matsui-lab-yamagata/tcal) by
+Matsui Lab. at Yamagata University, also MIT-licensed (notice included in
+`LICENSE`).
