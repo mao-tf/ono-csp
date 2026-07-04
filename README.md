@@ -10,10 +10,20 @@ companion `auto_opt` package.
 
 ## Status
 
-Early scaffolding. Tab 1 (Molecule Setup) of the UI is functional; the
-Step 1–5 calculation engines (Tabs 2–7) are UI skeletons pending
-implementation — see each tab's caption, and `legacy/` for Ono's existing
-scripts once integrated.
+Working prototype:
+
+- **Tab 1 (Molecule Setup)** — preset/custom molecule loading, editable vdW
+  radii, 3D viewer, and export of the monomer CSV consumed by the CLI scripts.
+- **Tab 2 (Intralayer vdW Scan)** — runs in the GUI: rigid-sphere contact
+  scan over the herringbone half-angle, alpha-vs-S plot, 9-molecule cluster
+  preview, and download of the initial candidates for the DFT step.
+- **Tabs 3–7 (DFT steps / transfer integrals)** — these run from the command
+  line with the scripts in `legacy/ono_scripts/` (Gaussian16 on an HPC); each
+  tab shows the commands and visualizes the result CSVs (drag & drop, with
+  bundled samples as fallback).
+
+See `spec.md` (section "大野コード対応表") for the mapping between the legacy
+scripts, the `src/csp` modules, and the GUI tabs.
 
 ## Install
 
