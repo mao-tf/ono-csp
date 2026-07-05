@@ -41,6 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 from csp.structure.molecule import load_molecule, _VDW  # noqa: E402
 from csp.structure.intralayer import cluster9, monomer_csv  # noqa: E402
 from csp.vdw.contact import step1a_scan  # noqa: E402
+from csp.vdw.interlayer import interlayer_vdw_scan, bilayer_preview  # noqa: E402
 from csp.plot.viewer3d import to_xyz_string, render_3d_html  # noqa: E402
 from csp.plot.map2d import build_heatmap_figure  # noqa: E402
 
@@ -783,6 +784,145 @@ with tab_step3:
     sub_para3, sub_twist3 = st.tabs(["para", "twist (→ Type III)"])
 
     with sub_para3:
+        st.subheader("vdW pre-scan — runs in this GUI")
+        st.caption(
+            "Rigid-sphere interlayer contact model (same algorithm as legacy "
+            "step3_para_vdw.py, vectorized): at fixed intralayer parameters "
+            "(a, b, theta, Rt, Rp), slide the upper layer by (Ra, Rb) and find "
+            "the vdW-limited interlayer distance z — this is the paper's "
+            "Fig. 6(b–d) upper-panel V(x,y) = a·b·z map. Click a point (or one "
+            "of the marked local minima) to preview the two-layer structure "
+            "and download it as a starting point for the DFT step below."
+        )
+        mol3 = st.session_state.get("molecule")
+        s1_current = st.session_state.get("s1vdw_current") or {}
+        c1, c2, c3 = st.columns(3)
+        s3_a = c1.number_input("a (Å)", value=float(s1_current.get("a", 6.0)), key="s3vdw_a")
+        s3_b = c2.number_input("b (Å)", value=float(s1_current.get("b", 7.0)), key="s3vdw_b")
+        s3_theta = c3.number_input(
+            "theta (deg, from Step 1)", value=float(s1_current.get("alpha", 25.0)), key="s3vdw_theta"
+        )
+        c4, c5 = st.columns(2)
+        s3_rt = c4.number_input(
+            "Rt (Å, T-contact long-axis shift)", value=0.0, step=0.1, key="s3vdw_rt"
+        )
+        s3_rp = c5.number_input(
+            "Rp (Å, 0 = G-form direction, ≠0 = N-form direction)", value=0.0, step=0.1, key="s3vdw_rp"
+        )
+
+        if mol3 is None:
+            st.info("Select a molecule in Tab 1 first.")
+        elif st.button(f"Run interlayer vdW scan ({mol3.name})", key="s3vdw_run"):
+            with st.spinner("Scanning..."):
+                df_vdw = interlayer_vdw_scan(
+                    mol3, a=s3_a, b=s3_b, theta=s3_theta, Rt=s3_rt, Rp=s3_rp,
+                    radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                )
+            st.session_state["s3vdw_df"] = df_vdw
+            st.session_state["s3vdw_params"] = {
+                "a": s3_a, "b": s3_b, "theta": s3_theta, "Rt": s3_rt, "Rp": s3_rp,
+            }
+
+        df_vdw = st.session_state.get("s3vdw_df")
+        params3 = st.session_state.get("s3vdw_params")
+        if df_vdw is not None and params3 is not None:
+            if st.button("Clear vdW scan results", key="s3vdw_clear"):
+                for k in ("s3vdw_df", "s3vdw_params", "s3vdw_current"):
+                    st.session_state.pop(k, None)
+                st.rerun()
+
+            col_map3, col_3d3 = st.columns([2, 1])
+            with col_map3:
+                value_choice = st.radio(
+                    "Color by", ["z (interlayer distance)", "V (unit cell volume)"],
+                    horizontal=True, key="s3vdw_valchoice",
+                )
+                val_col = "z" if value_choice.startswith("z") else "V"
+                pivot = df_vdw.pivot(index="Rb", columns="Ra", values=val_col)
+
+                from scipy.ndimage import minimum_filter
+                grid = pivot.values
+                is_min = (grid == minimum_filter(grid, size=5)) & np.isfinite(grid)
+                min_rb_idx, min_ra_idx = np.where(is_min)
+                min_ra = pivot.columns.to_numpy()[min_ra_idx]
+                min_rb = pivot.index.to_numpy()[min_rb_idx]
+
+                fig3 = px.imshow(
+                    pivot, color_continuous_scale="RdBu_r",
+                    labels={"color": val_col}, aspect="auto", origin="lower",
+                )
+                fig3.add_trace(go.Scatter(
+                    x=min_ra, y=min_rb, mode="markers", name="local min",
+                    marker=dict(symbol="square-open", size=12, color="black", line=dict(width=2)),
+                    customdata=np.stack([min_ra, min_rb], axis=-1),
+                    hovertemplate="Ra=%{x}<br>Rb=%{y}<extra>local min</extra>",
+                ))
+                fig3.update_layout(
+                    xaxis_title="Ra (Å, layer offset along a)",
+                    yaxis_title="Rb (Å, layer offset along b)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                )
+                event3 = st.plotly_chart(
+                    fig3, width="stretch", on_select="rerun", key="s3vdw_fig"
+                )
+                pts3 = event3.selection.points if (event3 and event3.selection) else []
+                if pts3:
+                    p0 = pts3[0]
+                    if p0.get("customdata") is not None:
+                        ra_sel, rb_sel = p0["customdata"][0], p0["customdata"][1]
+                    else:
+                        ra_sel, rb_sel = p0.get("x"), p0.get("y")
+                    if ra_sel is not None and rb_sel is not None:
+                        ident = (round(float(ra_sel), 1), round(float(rb_sel), 1))
+                        if st.session_state.get("s3vdw_fig_prev") != ident:
+                            row = df_vdw[
+                                np.isclose(df_vdw["Ra"], ident[0]) & np.isclose(df_vdw["Rb"], ident[1])
+                            ]
+                            if len(row):
+                                r = row.iloc[0]
+                                st.session_state["s3vdw_current"] = {
+                                    "cx": float(r["Ra"]), "cy": float(r["Rb"]), "cz": float(r["z"]),
+                                    "label": f"clicked: cx={r['Ra']} cy={r['Rb']} cz={r['z']:.2f} V={r['V']:.1f}",
+                                }
+                                st.session_state["s3vdw_fig_prev"] = ident
+
+                st.caption(f"{len(min_ra)} local minima marked (black squares) out of {len(df_vdw)} grid points.")
+
+            with col_3d3:
+                st.markdown("**Structure preview**")
+                current3 = st.session_state.get("s3vdw_current")
+                if current3 is None and len(df_vdw):
+                    best = df_vdw.loc[df_vdw["z"].idxmin()]
+                    current3 = {
+                        "cx": float(best["Ra"]), "cy": float(best["Rb"]), "cz": float(best["z"]),
+                        "label": f"default (min z): cx={best['Ra']} cy={best['Rb']} cz={best['z']:.2f}",
+                    }
+                if mol3 is not None and current3 is not None:
+                    st.caption(current3["label"])
+                    syms3, coords3 = bilayer_preview(
+                        mol3, params3["a"], params3["b"], params3["theta"],
+                        params3["Rt"], params3["Rp"],
+                        current3["cx"], current3["cy"], current3["cz"],
+                        radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                    )
+                    render_molecule_3d(
+                        syms3, coords3,
+                        f"{mol3.name} bilayer cx={current3['cx']} cy={current3['cy']} cz={current3['cz']:.2f}",
+                        key_suffix="s3vdw", style_key="s3vdw_style",
+                    )
+                    st.download_button(
+                        "Download step3_para_init_params.csv (1 row for the DFT step below)",
+                        data=pd.DataFrame([{
+                            "a": params3["a"], "b": params3["b"], "theta": params3["theta"],
+                            "Rt": params3["Rt"], "Rp": params3["Rp"],
+                            "cx": current3["cx"], "cy": current3["cy"], "cz": current3["cz"],
+                            "status": "NotYet",
+                        }]).to_csv(index=False),
+                        file_name="step3_para_init_params.csv", mime="text/csv",
+                        key="dl_s3vdw_init",
+                    )
+
+        st.divider()
         st.subheader("How to run (CLI)")
         cli_howto(
             what=(
@@ -807,9 +947,9 @@ with tab_step3:
                 "automatically (only cx, cy, cz are) — you supply the grid of "
                 "(Rt, Rp) values to try yourself: Rp = 0 rows explore the "
                 "G-form direction, Rp ≠ 0 rows explore the N-form direction. "
-                "The initial `cx, cy, cz` guess for each row can come from "
-                "the vdW interlayer-distance map `step3_para_vdw.py` (not "
-                "yet wired into this GUI — run it separately)."
+                "The initial `cx, cy, cz` guess for each row can come from the "
+                "vdW pre-scan above (download the 1-row CSV after clicking a "
+                "point) — concatenate rows for more than one starting point."
             ),
             setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
             command=(
