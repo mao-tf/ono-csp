@@ -7,9 +7,9 @@ from scipy.ndimage.filters import maximum_filter
 def get_c_vec_vdw(monomer_name,R3,R4,a_,b_,theta):#,name_csv
     
     i=np.zeros(3); a=np.array([a_,0,2*R3-R4]); b=np.array([0,b_,R4]); t1=(a+b)/2;t2=(a-b)/2 ##ずらし方の定義
-    monomer_array_i = get_monomer_xyzR(monomer_name,0.,0.,0.,0.,0.,theta)
-    
-    monomer_array_t = get_monomer_xyzR(monomer_name,0.,0.,0.,0.,0.,-theta)
+    monomer_array_i = get_monomer_xyzR(monomer_name,0.,0.,0.,0.,theta)
+
+    monomer_array_t = get_monomer_xyzR(monomer_name,0.,0.,0.,0.,-theta)
     
     arr_list1=[[i,'p'],[b,'p'],[-b,'p'],[a,'p'],[-a,'p'],[t1,'t'],[-t1,'t'],[t2,'t'],[-t2,'t']]##層内の分子の座標とp or t
     arr_list2=[[i,'t'],[b,'t'],[-b,'t'],[a,'t'],[-a,'t'],[t1,'p'],[-t1,'p'],[t2,'p'],[-t2,'p']]##層内の分子の座標とp or t
