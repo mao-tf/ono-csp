@@ -353,66 +353,121 @@ with tab_step1_vdw:
             "local_min": "#2ca02c",
         }
 
+        def _default_current(df: pd.DataFrame) -> Optional[dict]:
+            if len(df) == 0:
+                return None
+            row = df.iloc[0]
+            return {
+                "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
+                "label": f"default: alpha={row['theta']} a={row['a']} b={row['b']}",
+            }
+
+        def _render_preview(df: pd.DataFrame, key_suffix: str) -> None:
+            st.markdown("**Structure preview**")
+            if mol2 is None:
+                st.caption("Select a molecule in Tab 1.")
+                return
+            current = st.session_state.get("s1vdw_current") or _default_current(df)
+            if current is None:
+                st.caption("No candidates to preview.")
+                return
+            st.caption(current["label"])
+            syms, coords = cluster9(mol2, current["a"], current["b"], current["alpha"])
+            render_molecule_3d(
+                syms, coords,
+                f"{mol2.name} cluster9 alpha={current['alpha']} a={current['a']} b={current['b']}",
+                key_suffix=key_suffix, style_key=f"s1vdw_style_{key_suffix}",
+            )
+
         plot_fig2b, plot_figS1c = st.tabs([
             "Fig. 2(b)-style: S vs α", "Fig. S1(c)-style: S vs β (per α)",
         ])
 
         # ─── Fig. 2(b)-style: S vs alpha (vdW analogue) ───────────────
         with plot_fig2b:
-            st.caption(
-                "vdW analogue of Fig. 2(b): candidate cells at each alpha "
-                "(paper plots the DFT-optimized E_intra(8) here instead of S). "
-                "Click a point to preview its 9-molecule structure."
-            )
-            figA = go.Figure()
-            if df_curves is not None:
-                env = df_curves[df_curves["valid"]].groupby("alpha", as_index=False)["S"].min()
-                figA.add_trace(go.Scatter(
-                    x=env["alpha"], y=env["S"], mode="lines",
-                    name="min S (feasible)", line=dict(color="lightgray"),
-                    hoverinfo="skip",
-                ))
-            for kind, grp in df_init.groupby("kind") if "kind" in df_init.columns else []:
-                figA.add_trace(go.Scatter(
-                    x=grp["theta"], y=grp["S"], mode="markers",
-                    name=_KIND_LABEL.get(kind, kind),
-                    marker=dict(size=9, color=_KIND_COLOR.get(kind, "gray")),
-                    customdata=grp.index.to_numpy(),
-                    hovertemplate="alpha=%{x}<br>S=%{y:.1f} Å²<extra>" + kind + "</extra>",
-                ))
-            if "kind" not in df_init.columns:
-                figA.add_trace(go.Scatter(
-                    x=df_init["theta"], y=df_init["S"], mode="markers",
-                    name="candidates", marker=dict(size=9, color="tomato"),
-                    customdata=df_init.index.to_numpy(),
-                ))
-            figA.update_layout(
-                xaxis_title="alpha (deg, half of herringbone dihedral)",
-                yaxis_title="S = a×b (Å²)",
-                margin=dict(l=20, r=20, t=30, b=20),
-            )
-            event_a = st.plotly_chart(
-                figA, width="stretch", on_select="rerun", key="s1vdw_figA"
-            )
-            pts = event_a.selection.points if (event_a and event_a.selection) else []
-            if pts and pts[0].get("customdata") is not None:
-                idx = int(pts[0]["customdata"])
-                if st.session_state.get("s1vdw_figA_prev") != idx:
-                    row = df_init.loc[idx]
-                    st.session_state["s1vdw_current"] = {
-                        "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                        "label": f"Fig.2b click: alpha={row['theta']} a={row['a']} b={row['b']}",
-                    }
-                    st.session_state["s1vdw_figA_prev"] = idx
+            col_a, col_3d_a = st.columns([2, 1])
+            with col_a:
+                st.caption(
+                    "vdW analogue of Fig. 2(b): candidate cells at each alpha, "
+                    "connected within each category (paper plots the "
+                    "DFT-optimized E_intra(8) here instead of S; HB/PS/CH "
+                    "there ↔ endpoint/local-min category here). Click a point "
+                    "to preview its 9-molecule structure."
+                )
+                figA = go.Figure()
+                if df_curves is not None:
+                    env = df_curves[df_curves["valid"]].groupby("alpha", as_index=False)["S"].min()
+                    figA.add_trace(go.Scatter(
+                        x=env["alpha"], y=env["S"], mode="lines",
+                        name="min S (feasible)", line=dict(color="lightgray"),
+                        hoverinfo="skip",
+                    ))
+                for kind, grp in (df_init.groupby("kind") if "kind" in df_init.columns else []):
+                    grp = grp.sort_values("theta")
+                    color = _KIND_COLOR.get(kind, "gray")
+                    figA.add_trace(go.Scatter(
+                        x=grp["theta"], y=grp["S"], mode="lines+markers",
+                        name=_KIND_LABEL.get(kind, kind),
+                        line=dict(color=color), marker=dict(size=9, color=color),
+                        customdata=grp.index.to_numpy(),
+                        hovertemplate="alpha=%{x}<br>S=%{y:.1f} Å²<extra>" + kind + "</extra>",
+                    ))
+                if "kind" not in df_init.columns:
+                    grp = df_init.sort_values("theta")
+                    figA.add_trace(go.Scatter(
+                        x=grp["theta"], y=grp["S"], mode="lines+markers",
+                        name="candidates", marker=dict(size=9, color="tomato"),
+                        line=dict(color="tomato"),
+                        customdata=grp.index.to_numpy(),
+                    ))
+                figA.update_layout(
+                    xaxis_title="alpha (deg, half of herringbone dihedral)",
+                    yaxis_title="S = a×b (Å²)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                )
+                event_a = st.plotly_chart(
+                    figA, width="stretch", on_select="rerun", key="s1vdw_figA"
+                )
+                pts = event_a.selection.points if (event_a and event_a.selection) else []
+                if pts and pts[0].get("customdata") is not None:
+                    idx = int(pts[0]["customdata"])
+                    if st.session_state.get("s1vdw_figA_prev") != idx:
+                        row = df_init.loc[idx]
+                        st.session_state["s1vdw_current"] = {
+                            "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
+                            "label": f"Fig.2b click: alpha={row['theta']} a={row['a']} b={row['b']}",
+                        }
+                        st.session_state["s1vdw_figA_prev"] = idx
 
-            st.download_button(
-                "Download step1_init_params.csv (input for the DFT step)",
-                data=df_init[["a", "b", "theta"]].assign(status="NotYet").to_csv(index=False),
-                file_name="step1_init_params.csv", mime="text/csv",
-                key="dl_s1vdw_init",
-            )
-            with st.expander("Candidates table"):
-                st.dataframe(df_init, width="stretch")
+                st.download_button(
+                    "Download step1_init_params.csv (input for the DFT step)",
+                    data=df_init[["a", "b", "theta"]].assign(status="NotYet").to_csv(index=False),
+                    file_name="step1_init_params.csv", mime="text/csv",
+                    key="dl_s1vdw_init",
+                )
+                with st.expander("Candidates table"):
+                    st.dataframe(df_init, width="stretch")
+
+                labels = [
+                    f"alpha={r['theta']}  a={r['a']}  b={r['b']}  S={r['S']:.1f}"
+                    + (f"  [{r['kind']}]" if "kind" in df_init.columns else "")
+                    for _, r in df_init.iterrows()
+                ]
+                if labels:
+                    sel = st.selectbox(
+                        "Or pick a candidate from the list", range(len(labels)),
+                        format_func=lambda i: labels[i], key="s1vdw_sel",
+                    )
+                    if st.session_state.get("s1vdw_sel_prev") != sel:
+                        row = df_init.iloc[sel]
+                        st.session_state["s1vdw_current"] = {
+                            "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
+                            "label": f"list pick: alpha={row['theta']} a={row['a']} b={row['b']}",
+                        }
+                        st.session_state["s1vdw_sel_prev"] = sel
+
+            with col_3d_a:
+                _render_preview(df_init, key_suffix="s1vdw_A")
 
         # ─── Fig. S1(c)-style: S vs beta (theta_ab) per alpha ─────────
         with plot_figS1c:
@@ -423,61 +478,68 @@ with tab_step1_vdw:
                     "(not from an uploaded step1_init_params.csv)."
                 )
             else:
-                st.caption(
-                    "vdW analogue of Fig. S1(c): S vs contact-direction angle β "
-                    "for a few alpha values. Solid = SP-neighbor vdW spheres "
-                    "clear (valid); dashed = they overlap (infeasible). Click a "
-                    "point to preview its structure."
-                )
-                alphas_avail = sorted(df_curves["alpha"].unique())
-                n_default = min(5, len(alphas_avail))
-                default_idx = np.linspace(0, len(alphas_avail) - 1, n_default).round().astype(int)
-                default_alphas = [alphas_avail[i] for i in sorted(set(default_idx))]
-                sel_alphas = st.multiselect(
-                    "alpha values to show", alphas_avail, default=default_alphas,
-                    key="s1vdw_figB_alphas",
-                )
-                palette = px.colors.qualitative.Plotly
-                figB = go.Figure()
-                for i, alpha in enumerate(sel_alphas):
-                    color = palette[i % len(palette)]
-                    sub = df_curves[df_curves["alpha"] == alpha].sort_values("theta_ab")
-                    # split into contiguous valid/invalid runs for solid/dashed segments
-                    group_id = (sub["valid"] != sub["valid"].shift()).cumsum()
-                    first = True
-                    for _, seg in sub.groupby(group_id):
-                        figB.add_trace(go.Scatter(
-                            x=seg["theta_ab"], y=seg["S"], mode="lines+markers",
-                            line=dict(color=color, dash="solid" if seg["valid"].iloc[0] else "dash"),
-                            marker=dict(size=4, color=color),
-                            name=f"alpha={alpha}°", legendgroup=f"a{alpha}",
-                            showlegend=first,
-                            customdata=[[alpha, ta, a, b] for ta, a, b in
-                                        zip(seg["theta_ab"], seg["a"], seg["b"])],
-                            hovertemplate="beta=%{x}<br>S=%{y:.1f} Å²<extra>alpha="
-                                          + str(alpha) + "</extra>",
-                        ))
-                        first = False
-                figB.update_layout(
-                    xaxis_title="beta (deg, T-contact direction)",
-                    yaxis_title="S = a×b (Å²)",
-                    margin=dict(l=20, r=20, t=30, b=20),
-                )
-                event_b = st.plotly_chart(
-                    figB, width="stretch", on_select="rerun", key="s1vdw_figB"
-                )
-                pts_b = event_b.selection.points if (event_b and event_b.selection) else []
-                if pts_b and pts_b[0].get("customdata") is not None:
-                    cd = pts_b[0]["customdata"]
-                    ident = tuple(cd)
-                    if st.session_state.get("s1vdw_figB_prev") != ident:
-                        st.session_state["s1vdw_current"] = {
-                            "alpha": float(cd[0]), "a": float(cd[2]), "b": float(cd[3]),
-                            "label": f"Fig.S1c click: alpha={cd[0]} beta={cd[1]} a={cd[2]} b={cd[3]}",
-                        }
-                        st.session_state["s1vdw_figB_prev"] = ident
+                col_b, col_3d_b = st.columns([2, 1])
+                with col_b:
+                    st.caption(
+                        "vdW analogue of Fig. S1(c): S vs contact-direction angle "
+                        "β for a few alpha values. Solid = SP-neighbor vdW "
+                        "spheres clear (valid); dashed = they overlap "
+                        "(infeasible). Click a point to preview its structure."
+                    )
+                    alphas_avail = sorted(df_curves["alpha"].unique())
+                    n_default = min(5, len(alphas_avail))
+                    default_idx = np.linspace(0, len(alphas_avail) - 1, n_default).round().astype(int)
+                    default_alphas = [alphas_avail[i] for i in sorted(set(default_idx))]
+                    sel_alphas = st.multiselect(
+                        "alpha values to show", alphas_avail, default=default_alphas,
+                        key="s1vdw_figB_alphas",
+                    )
+                    palette = px.colors.qualitative.Plotly
+                    figB = go.Figure()
+                    for i, alpha in enumerate(sel_alphas):
+                        color = palette[i % len(palette)]
+                        sub = df_curves[df_curves["alpha"] == alpha].sort_values("theta_ab")
+                        # split into contiguous valid/invalid runs for solid/dashed segments
+                        group_id = (sub["valid"] != sub["valid"].shift()).cumsum()
+                        first = True
+                        for _, seg in sub.groupby(group_id):
+                            figB.add_trace(go.Scatter(
+                                x=seg["theta_ab"], y=seg["S"], mode="lines+markers",
+                                line=dict(color=color, dash="solid" if seg["valid"].iloc[0] else "dash"),
+                                marker=dict(size=4, color=color),
+                                name=f"alpha={alpha}°", legendgroup=f"a{alpha}",
+                                showlegend=first,
+                                customdata=[[alpha, ta, a, b] for ta, a, b in
+                                            zip(seg["theta_ab"], seg["a"], seg["b"])],
+                                hovertemplate="beta=%{x}<br>S=%{y:.1f} Å²<extra>alpha="
+                                              + str(alpha) + "</extra>",
+                            ))
+                            first = False
 
-                if df_curves is not None:
+                    y_vals = [v for tr in figB.data if tr.y is not None for v in tr.y]
+                    if y_vals:
+                        y_max = max(y_vals)
+                        y_lo = 40 if y_max > 40 else 0
+                        figB.update_yaxes(range=[y_lo, y_max * 1.03])
+                    figB.update_layout(
+                        xaxis_title="beta (deg, T-contact direction)",
+                        yaxis_title="S = a×b (Å²)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                    )
+                    event_b = st.plotly_chart(
+                        figB, width="stretch", on_select="rerun", key="s1vdw_figB"
+                    )
+                    pts_b = event_b.selection.points if (event_b and event_b.selection) else []
+                    if pts_b and pts_b[0].get("customdata") is not None:
+                        cd = pts_b[0]["customdata"]
+                        ident = tuple(cd)
+                        if st.session_state.get("s1vdw_figB_prev") != ident:
+                            st.session_state["s1vdw_current"] = {
+                                "alpha": float(cd[0]), "a": float(cd[2]), "b": float(cd[3]),
+                                "label": f"Fig.S1c click: alpha={cd[0]} beta={cd[1]} a={cd[2]} b={cd[3]}",
+                            }
+                            st.session_state["s1vdw_figB_prev"] = ident
+
                     st.download_button(
                         "Download full sweep curves CSV",
                         data=df_curves.to_csv(index=False),
@@ -485,42 +547,8 @@ with tab_step1_vdw:
                         key="dl_s1vdw_curves",
                     )
 
-        st.divider()
-        st.subheader("Layer structure preview (9-molecule cluster)")
-        if mol2 is None:
-            st.caption("Select a molecule in Tab 1 to preview structures.")
-        elif len(df_init) == 0:
-            st.caption("No candidates to preview.")
-        else:
-            labels = [
-                f"alpha={r['theta']}  a={r['a']}  b={r['b']}  S={r['S']:.1f}"
-                + (f"  [{r['kind']}]" if "kind" in df_init.columns else "")
-                for _, r in df_init.iterrows()
-            ]
-            sel = st.selectbox(
-                "Or pick a candidate from the list", range(len(labels)),
-                format_func=lambda i: labels[i], key="s1vdw_sel",
-            )
-            if st.session_state.get("s1vdw_sel_prev") != sel:
-                row = df_init.iloc[sel]
-                st.session_state["s1vdw_current"] = {
-                    "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                    "label": f"list pick: alpha={row['theta']} a={row['a']} b={row['b']}",
-                }
-                st.session_state["s1vdw_sel_prev"] = sel
-
-            current = st.session_state.get("s1vdw_current")
-            if current is None:
-                row = df_init.iloc[0]
-                current = {"alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                          "label": f"default: alpha={row['theta']} a={row['a']} b={row['b']}"}
-            st.caption(current["label"])
-            syms, coords = cluster9(mol2, current["a"], current["b"], current["alpha"])
-            render_molecule_3d(
-                syms, coords,
-                f"{mol2.name} cluster9 alpha={current['alpha']} a={current['a']} b={current['b']}",
-                key_suffix="s1vdw", style_key="s1vdw_style",
-            )
+                with col_3d_b:
+                    _render_preview(df_init, key_suffix="s1vdw_B")
 
 
 # ══════════════════════════════════════════════════════════
