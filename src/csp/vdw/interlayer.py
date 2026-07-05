@@ -133,9 +133,18 @@ def interlayer_vdw_scan(
             z_max1 = _z_max_for_shift(over1, radii, under1, rad1)
             z_max2 = _z_max_for_shift(over2, radii, under2, rad2)
             z_max = max(z_max1, z_max2)
-            rows.append((float(Ra), float(Rb), z_max, a * b * z_max))
+            # `z_max` is only the *additional* vdW-clearing gap on top of the
+            # z_shift baseline already applied to over1/over2 above (matching
+            # Ono's original get_c_vec_vdw, which returns this same
+            # increment — verified bit-for-bit against it). `cz` is the
+            # actual overlayer z-coordinate (z_shift + z_max): use *this* one
+            # as the c-vector's z component downstream (3D preview, exported
+            # init CSV) — using `z` alone silently drops the z_shift term and
+            # places the overlayer too low whenever Rt or Rp is nonzero,
+            # causing real atomic overlap.
+            rows.append((float(Ra), float(Rb), z_max, a * b * z_max, z_shift + z_max))
 
-    return pd.DataFrame(rows, columns=['Ra', 'Rb', 'z', 'V'])
+    return pd.DataFrame(rows, columns=['Ra', 'Rb', 'z', 'V', 'cz'])
 
 
 def bilayer_preview(

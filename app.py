@@ -908,8 +908,8 @@ with tab_step3:
                             if len(row):
                                 r = row.iloc[0]
                                 st.session_state["s3vdw_current"] = {
-                                    "cx": float(r["Ra"]), "cy": float(r["Rb"]), "cz": float(r["z"]),
-                                    "label": f"clicked: cx={r['Ra']} cy={r['Rb']} cz={r['z']:.2f} V={r['V']:.1f}",
+                                    "cx": float(r["Ra"]), "cy": float(r["Rb"]), "cz": float(r["cz"]),
+                                    "label": f"clicked: cx={r['Ra']} cy={r['Rb']} cz={r['cz']:.2f} V={r['V']:.1f}",
                                 }
                                 st.session_state["s3vdw_fig_prev"] = ident
 
@@ -921,8 +921,8 @@ with tab_step3:
                 if current3 is None and len(df_vdw):
                     best = df_vdw.loc[df_vdw["z"].idxmin()]
                     current3 = {
-                        "cx": float(best["Ra"]), "cy": float(best["Rb"]), "cz": float(best["z"]),
-                        "label": f"default (min z): cx={best['Ra']} cy={best['Rb']} cz={best['z']:.2f}",
+                        "cx": float(best["Ra"]), "cy": float(best["Rb"]), "cz": float(best["cz"]),
+                        "label": f"default (min z): cx={best['Ra']} cy={best['Rb']} cz={best['cz']:.2f}",
                     }
                 if mol3 is not None and current3 is not None:
                     st.caption(current3["label"])
