@@ -111,7 +111,7 @@ def listen(auto_dir,monomer_name,num_nodes,isTest):##
                 if not(alreadyCalculated):
                     file_name = exec_gjf(auto_dir, monomer_name, {**params_dict},isTest=isTest)### submission of new calculations
                     df_newline = pd.Series({**params_dict,'E':0.,'E_p1':0.,'E_p2':0.,'E_t':0.,'status':'InProgress','file_name':file_name})
-                    df_E=df_E.append(df_newline,ignore_index=True)
+                    df_E=pd.concat([df_E,pd.DataFrame([df_newline])],ignore_index=True)
                     df_E.to_csv(auto_csv,index=False)
     
     init_params_csv=os.path.join(auto_dir, 'step1_init_params.csv')

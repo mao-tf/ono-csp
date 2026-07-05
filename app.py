@@ -203,6 +203,49 @@ def render_molecule_3d(symbols, coords, comment: str, key_suffix: str, style_key
     )
 
 
+def cli_howto(
+    *,
+    what: str,
+    prepare: str,
+    setup: str,
+    command: str,
+    output: str,
+    show_route: bool = True,
+) -> None:
+    """Standard 4-part "how to run this step with Ono's package" block.
+
+    Every CLI tab (3, 4, 5, 6a, 6b, 7) uses the same shape so a user who has
+    read one tab knows where to look in the others: what the step computes,
+    what input file(s) to prepare by hand (and where their values come
+    from), what one-time environment setup is needed, then the command and
+    the resulting output file.
+    """
+    st.info(what)
+    st.markdown("**1. Prepare inputs**")
+    st.markdown(prepare)
+    st.markdown("**2. One-time setup**")
+    st.markdown(setup)
+    st.markdown("**3. Run**")
+    st.code(command, language="bash")
+    if show_route:
+        st.code(GAUSSIAN_ROUTE, language="text")
+    st.markdown("**4. Output**")
+    st.markdown(output)
+
+
+_SETUP_MONOMER_ENV = (
+    "- Set `CSP_MONOMER_DIR` to the folder holding the monomer CSV "
+    "(X, Y, Z, R columns — download it from **Tab 1**), e.g. "
+    "`export CSP_MONOMER_DIR=/path/to/data/monomer` "
+    "(defaults to `~/path/to/monomer/` if unset)."
+)
+_SETUP_SCHEDULER = (
+    "- The legacy scripts submit jobs with `pjsub` (Fugaku/PJM). On our SGE "
+    "cluster, replace the `pjsub`/batch-script generation with `qsub` "
+    "(see `src/csp/dft/job_cluster.py` for an SGE job-script template)."
+)
+
+
 # ══════════════════════════════════════════════════════════
 #  Tabs
 # ══════════════════════════════════════════════════════════
@@ -571,23 +614,28 @@ with tab_step1_vdw:
 # ══════════════════════════════════════════════════════════
 with tab_step1_dft:
     st.subheader("How to run (CLI)")
-    st.info(
-        "Step 1 DFT-D refinement runs on an HPC with Gaussian16 using Ono's "
-        f"scripts in `{LEGACY_DIR}/`. It hill-climbs (a, b) in 0.1 Å steps at "
-        "each fixed alpha, minimizing E_intra(8) = 4·E_t + 2·E_p1 + 2·E_p2 "
-        "(BSSE-corrected dimer interaction energies)."
+    cli_howto(
+        what=(
+            "Step 1 DFT-D refinement runs on an HPC with Gaussian16 using "
+            f"Ono's scripts in `{LEGACY_DIR}/` (`step1.py` + `make_step1.py`). "
+            "It hill-climbs (a, b) in 0.1 Å steps at each fixed alpha, "
+            "minimizing E_intra(8) = 4·E_t + 2·E_p1 + 2·E_p2 (BSSE-corrected "
+            "dimer interaction energies)."
+        ),
+        prepare=(
+            "- `step1_init_params.csv` (columns: `a, b, theta, status`) — "
+            "generated automatically by `--init` below, using the same vdW "
+            "model as **Tab 2**. You don't need to write this by hand."
+        ),
+        setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+        command=(
+            "python step1.py --init --auto-dir /path/to/workdir "
+            "--monomer-name pentacene \\\n    --num-nodes 4 --num-init 2\n"
+            "# --init (re)builds step1_init_params.csv; omit it on later runs\n"
+            "# to keep hill-climbing from where step1.csv left off."
+        ),
+        output="`<auto-dir>/step1.csv` — columns `a, b, theta, E, E_p1, E_p2, E_t, status, file_name`.",
     )
-    st.code(
-        f"""# one-time edits in {LEGACY_DIR}:
-#   - make_step1.py / vdw.py: monomer CSV path ('~/path/to/monomer/') — CSV downloadable from Tab 1
-#   - make_step1.py get_one_exe(): Gaussian16 environment; exec_gjf uses pjsub — replace with qsub for SGE
-python step1.py --init --auto-dir /path/to/workdir --monomer-name pentacene \\
-    --num-nodes 4 --num-init 2
-# --init regenerates step1_init_params.csv with the same vdW model as Tab 2;
-# results accumulate in <auto-dir>/step1.csv""",
-        language="bash",
-    )
-    st.code(GAUSSIAN_ROUTE, language="text")
 
     st.divider()
     st.subheader("Results — alpha vs E_intra(8)  (step1.csv)")
@@ -612,20 +660,25 @@ python step1.py --init --auto-dir /path/to/workdir --monomer-name pentacene \\
 # ══════════════════════════════════════════════════════════
 with tab_step2:
     st.subheader("How to run (CLI)")
-    st.info(
-        "Step 2 (para variant) scans the molecular shift z along the long "
-        "axis at the T-shaped and slipped-parallel contacts, with the lattice "
-        "fixed to the Step 1 optimum (legacy step2_para.py; 41 z-points from "
-        "0 to 4 Å in one Gaussian input via --Link1). This underlies the "
-        "paper's inclination/shift analysis (§2.2)."
+    cli_howto(
+        what=(
+            "Step 2 (para variant) scans the molecular shift z along the "
+            "long axis at the T-shaped and slipped-parallel contacts, with "
+            "the lattice fixed to the Step 1 optimum "
+            f"(`{LEGACY_DIR}/step2_para.py` + `make_step2_para.py`; "
+            "41 z-points from 0 to 4 Å in one Gaussian input via --Link1). "
+            "See spec.md \"タブ別 詳細ガイド\" for how to read the plot below."
+        ),
+        prepare=(
+            "- `step2_init_params.csv`: **one row**, columns `a, b, theta` — "
+            "take the best (a, b) at your chosen alpha from **Tab 3**'s "
+            "`step1.csv` and write it yourself (no generator script for this "
+            "one)."
+        ),
+        setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+        command="python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene",
+        output="`<auto-dir>/step2_para.csv` — columns `z, Et, Ep` (mirrored to -4..4 Å).",
     )
-    st.code(
-        """# put a single-row step2_init_params.csv (a, b, theta = Step 1 optimum) in <auto-dir>
-python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene
-# output: <auto-dir>/step2_para.csv with columns z, Et, Ep (mirrored to -4..4 Å)""",
-        language="bash",
-    )
-    st.code(GAUSSIAN_ROUTE, language="text")
 
     st.divider()
     st.subheader("Results — Et / Ep vs z  (step2_para.csv)")
@@ -662,22 +715,34 @@ python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene
 # ══════════════════════════════════════════════════════════
 with tab_step3:
     st.subheader("How to run (CLI)")
-    st.info(
-        "Step 3 (para variant) optimizes the interlayer c-vector (cx, cy, cz) "
-        "by 3×3×3 hill-climbing at fixed intralayer parameters (a, b, theta, "
-        "Rt, Rp). Each point computes 10 interlayer dimers; E averages the "
-        "two stacking patterns and sums the four T-shaped pairs (legacy "
-        "step3_para.py). step3_para_vdw.py additionally provides the vdW "
-        "interlayer-distance map z(x, y) used to pick starting points."
+    cli_howto(
+        what=(
+            "Step 3 (para variant) optimizes the interlayer c-vector "
+            "(cx, cy, cz) by 3×3×3 hill-climbing at fixed intralayer "
+            f"parameters (a, b, theta, Rt, Rp) (`{LEGACY_DIR}/step3_para.py`). "
+            "Each point computes 10 interlayer dimers; E averages the two "
+            "stacking patterns and sums the four T-shaped pairs."
+        ),
+        prepare=(
+            "- `step3_para_init_params.csv`: rows of `a, b, theta, Rt, Rp, "
+            "cx, cy, cz` (starting points). `a, b, theta` come from Step 1 "
+            "(**Tab 3**); `Rt, Rp` (long-axis shifts at the T-shaped / "
+            "slipped-parallel contacts) and the initial `cx, cy, cz` come "
+            "from the vdW interlayer-distance map "
+            "`step3_para_vdw.py` (not yet wired into this GUI — run it "
+            "separately to pick starting values)."
+        ),
+        setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+        command=(
+            "python step3_para.py --auto-dir /path/to/workdir "
+            "--monomer-name pentacene \\\n    --num-nodes 4 --num-init 2"
+        ),
+        output=(
+            "`<auto-dir>/step3_para.csv` — columns `cx, cy, cz, a, b, theta, "
+            "Rt, Rp, E, E_i01, E_ip1, E_ip2, E_it1..4, E_i02, E_ip3, E_ip4, "
+            "status, file_name`."
+        ),
     )
-    st.code(
-        """# step3_para_init_params.csv: rows of a, b, theta, Rt, Rp, cx, cy, cz (starting points)
-python step3_para.py --auto-dir /path/to/workdir --monomer-name pentacene \\
-    --num-nodes 4 --num-init 2
-# output: <auto-dir>/step3_para.csv (cx, cy, cz, ..., E, per-dimer energies)""",
-        language="bash",
-    )
-    st.code(GAUSSIAN_ROUTE, language="text")
 
     st.divider()
     st.subheader("Results — interlayer energy map  (step3_para.csv)")
@@ -708,16 +773,31 @@ with tab_step4:
 
     with sub_2t:
         st.subheader("How to run (CLI)")
-        st.info(
-            "Step 2 (twist variant, → Type III packing with glide symmetry): "
-            "introduces the T-contact long-axis shift Rt and the torsion A2, "
-            "then re-optimizes (a, b) by hill-climbing at each fixed "
-            "(theta, Rt, A2) (legacy step2_twist.py; E = 4·E_t + 2·E_p1)."
-        )
-        st.code(
-            "python step2_twist.py --auto-dir /path/to/workdir --monomer-name naphthalene \\\n"
-            "    --num-nodes 4 --num-init 2",
-            language="bash",
+        cli_howto(
+            what=(
+                "Step 2 (twist variant, → Type III packing with glide "
+                "symmetry): introduces the T-contact long-axis shift Rt and "
+                "the torsion A2, then re-optimizes (a, b) by hill-climbing "
+                f"at each fixed (theta, Rt, A2) (`{LEGACY_DIR}/step2_twist.py`; "
+                "E = 4·E_t + 2·E_p1)."
+            ),
+            prepare=(
+                "- `step2_twist_init_params.csv`: rows of `theta, Rt, A2, "
+                "a, b, status`. `theta` and starting `a, b` come from Step 1 "
+                "(**Tab 3**); `Rt` (twist shift) and `A2` (torsion) are the "
+                "new values you want to try (e.g. a grid of A2 = 0..20° per "
+                "spec.md's expected naphthalene/anthracene optimum). Set "
+                "`status='NotYet'` for each row."
+            ),
+            setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+            command=(
+                "python step2_twist.py --auto-dir /path/to/workdir "
+                "--monomer-name naphthalene \\\n    --num-nodes 4 --num-init 2"
+            ),
+            output=(
+                "`<auto-dir>/step2_twist.csv` — columns `a, b, theta, Rt, A2, "
+                "E, E_p1, E_t, status, file_name`."
+            ),
         )
         st.divider()
         st.subheader("Results  (step2_twist.csv)")
@@ -738,14 +818,24 @@ with tab_step4:
 
     with sub_3t:
         st.subheader("How to run (CLI)")
-        st.info(
-            "Step 3 (twist variant): interlayer c-vector optimization for the "
-            "twisted (Type III) packing (legacy step3_twist.py)."
-        )
-        st.code(
-            "python step3_twist.py --auto-dir /path/to/workdir --monomer-name naphthalene \\\n"
-            "    --num-nodes 4 --num-init 2",
-            language="bash",
+        cli_howto(
+            what=(
+                "Step 3 (twist variant): interlayer c-vector optimization "
+                f"for the twisted (Type III) packing (`{LEGACY_DIR}/step3_twist.py`)."
+            ),
+            prepare=(
+                "- `step3_twist_init_params.csv`: rows of `a, b, theta, Rt, "
+                "A2, cx, cy, cz` (starting points). `a, b, theta, Rt, A2` "
+                "come from the Step 2 twist result (left sub-tab) at the "
+                "energy minimum; initial `cx, cy, cz` are a guess (0 or "
+                "small values) that the hill-climb will refine."
+            ),
+            setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+            command=(
+                "python step3_twist.py --auto-dir /path/to/workdir "
+                "--monomer-name naphthalene \\\n    --num-nodes 4 --num-init 2"
+            ),
+            output="`<auto-dir>/step3_twist.csv` — columns `cx, cy, cz, ..., E`.",
         )
         st.divider()
         st.subheader("Results  (step3_twist.csv)")
@@ -766,22 +856,37 @@ with tab_step4:
 # ══════════════════════════════════════════════════════════
 with tab_step5:
     st.subheader("How to run (CLI)")
-    st.info(
-        "Transfer integrals are computed with the CSV-batch workflow in "
-        "`legacy/ono_scripts/tcal_csv/` — a wrapper around Prof. Matsui's "
-        "tcal program (https://github.com/matsui-lab-yamagata/tcal; tcal_1.py "
-        "is Ono's slightly modified copy). For each arrangement row "
-        "(a, b, theta, A2, z) it builds T-shaped and slipped-parallel dimer "
-        "inputs, runs Gaussian16, and extracts the HOMO-HOMO transfer "
-        "integral. MOs are computed at B3LYP/6-31G* (paper METHOD)."
-    )
-    st.code(
-        """# edit the hardcoded /path/to/tcal_csv/ paths and job.sh for your cluster first
-python tcal_csv.py --init   --auto-dir workdir --monomer-name pentacene   # build inputs
-python tcal_csv.py --qsub   --auto-dir workdir --monomer-name pentacene   # submit Gaussian
-python tcal_csv.py --tcal   --auto-dir workdir --monomer-name pentacene   # run tcal_1.py
-python tcal_csv.py --result --auto-dir workdir --monomer-name pentacene   # collect result.txt""",
-        language="bash",
+    cli_howto(
+        what=(
+            "Transfer integrals are computed with the CSV-batch workflow in "
+            "`legacy/ono_scripts/tcal_csv/` (`tcal_csv.py`) — a wrapper "
+            "around Prof. Matsui's tcal program "
+            "(https://github.com/matsui-lab-yamagata/tcal; `tcal_1.py` is "
+            "Ono's slightly modified copy). For each arrangement row it "
+            "builds T-shaped and slipped-parallel dimer inputs, runs "
+            "Gaussian16, and extracts the HOMO-HOMO transfer integral. MOs "
+            "are computed at B3LYP/6-31G* (paper METHOD)."
+        ),
+        prepare=(
+            "- `<auto-dir>/init_params.csv`: rows of `a, b, theta, A2, z` — "
+            "the representative arrangements (e.g. the R-form optimum from "
+            "**Tab 3**, and any Type II/III/IV structures from Tabs 5/6) "
+            "you want J for."
+        ),
+        setup=(
+            _SETUP_MONOMER_ENV.replace("Tab 1", "Tab 1 — this feeds `get_monomer_xyzR` in tcal_csv.py too") + "\n"
+            + "- `job.sh` (next to `tcal_csv.py`) is a Fugaku/PJM batch script "
+            "template; edit it (or `qsub_process()`'s `pjsub job.sh` call) "
+            "for our SGE cluster."
+        ),
+        command=(
+            "python tcal_csv.py --init   --auto-dir /path/to/workdir --monomer-name pentacene   # build inputs\n"
+            "python tcal_csv.py --qsub   --auto-dir /path/to/workdir --monomer-name pentacene   # submit Gaussian\n"
+            "python tcal_csv.py --tcal   --auto-dir /path/to/workdir --monomer-name pentacene   # run tcal_1.py\n"
+            "python tcal_csv.py --result --auto-dir /path/to/workdir --monomer-name pentacene   # collect result.txt"
+        ),
+        output="`<auto-dir>/result.txt` — space-separated HOMO transfer integrals per row (T-shaped, then slipped-parallel).",
+        show_route=False,
     )
 
     st.divider()

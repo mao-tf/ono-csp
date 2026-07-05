@@ -8,10 +8,12 @@ import pandas as pd
 import argparse
 import subprocess
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MONOMER_LIST = ["naphthalene","anthracene","tetracene","pentacene","hexacene"]
 def get_monomer_xyzR(monomer_name,Ta,Tb,Tc,A2,A3):
     T_vec = np.array([Ta,Tb,Tc])
-    df_mono=pd.read_csv(f'/path/to/tcal_csv/monomer/{monomer_name}.csv')
+    df_mono=pd.read_csv(os.path.join(os.path.expanduser(os.environ.get('CSP_MONOMER_DIR', '~/path/to/monomer/')), f'{monomer_name}.csv'))
     atoms_array_xyzR=df_mono[['X','Y','Z','R']].values
     ex = np.array([1.,0.,0.]); ey = np.array([0.,1.,0.]); ez = np.array([0.,0.,1.])
     xyz_array = atoms_array_xyzR[:,:3]
@@ -25,14 +27,14 @@ def pre_process(args):
     work_dir = args.auto_dir
     monomer_name = args.monomer_name
 
-    df=pd.read_csv(f'/path/to/tcal_csv/{work_dir}/init_params.csv')##parameters of molecular arrangements to be calculated
+    df=pd.read_csv(f'{work_dir}/init_params.csv')##parameters of molecular arrangements to be calculated
     a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
     for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
         
-        os.makedirs(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}",exist_ok=True)## calculation directory
-        shutil.copy(rf"/path/to/tcal_csv/job.sh",rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}") ## batch job script
-        shutil.copy(rf"/path/to/tcal_csv/tcal_1.py",rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}") ## tcal program for calculating the transfer integral  
+        os.makedirs(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}",exist_ok=True)## calculation directory
+        shutil.copy(os.path.join(_SCRIPT_DIR,"job.sh"),rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}") ## batch job script
+        shutil.copy(os.path.join(_SCRIPT_DIR,"tcal_1.py"),rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}") ## tcal program for calculating the transfer integral  
         
     for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):  ## Gaussian16 input files without molecuar coordinates  
         lines1 = [     
@@ -82,49 +84,48 @@ def pre_process(args):
             line_p.append(line)
 
         ### 6 files consisting of dimer monomer1 monomer2 of t-shaped and slipped parallel
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(line_t)
             f.writelines(lines2)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m1.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m1.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m1.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m1.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(lines2)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m2.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m2.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m2.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m2.gjf","a") as f:
             f.writelines(line_t)
             f.writelines(lines2)
 
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(line_p)
             f.writelines(lines2)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m1.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m1.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m1.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m1.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(lines2)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m2.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m2.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m2.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m2.gjf","a") as f:
             f.writelines(line_p)
             f.writelines(lines2)
         
 def qsub_process(args):## submission of Gaussian16 calculations
     work_dir = args.auto_dir
     
-    df=pd.read_csv(f'/path/to/tcal_csv/{work_dir}/init_params.csv')
+    df=pd.read_csv(f'{work_dir}/init_params.csv')
     a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
     for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-        path=rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
-        subprocess.run(['cd',path])
+        path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
         os.chdir(path)
         subprocess.run(['pjsub job.sh'],shell=True)
         time.sleep(10)##we do not prepare controlling system so we submit the job every 10 seconds
@@ -132,7 +133,7 @@ def qsub_process(args):## submission of Gaussian16 calculations
 def tcal_process(args): ## calculate transfer integral using tcal_1.py published by Prof. Matsui
     work_dir = args.auto_dir
     monomer_name = args.monomer_name
-    df=pd.read_csv(f'/path/to/tcal_csv/{work_dir}/init_params.csv')
+    df=pd.read_csv(f'{work_dir}/init_params.csv')
     a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
 
@@ -140,11 +141,10 @@ def tcal_process(args): ## calculate transfer integral using tcal_1.py published
     n1=len(monomer_array_i)
 
     for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-        path=rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
-        check_path=rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test.fch"
+        path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
+        check_path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test.fch"
         while not os.path.exists(check_path):
             time.sleep(1)
-        subprocess.run(['cd',path])
         os.chdir(path)
         subprocess.run([f'python tcal_1.py -r --n_mono1 {n1} test_t.gjf > test_t.txt &'],shell=True)
         subprocess.run([f'python tcal_1.py -r --n_mono1 {n1} test_p.gjf > test_p.txt &'],shell=True)
@@ -152,13 +152,13 @@ def tcal_process(args): ## calculate transfer integral using tcal_1.py published
 def result_process(args):
     work_dir = args.auto_dir
     
-    df=pd.read_csv(f'/path/to/tcal_csv/{work_dir}/init_params.csv')##pathは適宜決定
+    df=pd.read_csv(f'{work_dir}/init_params.csv')##pathは適宜決定
     a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
-    with open(f"/path/to/tcal_csv/{work_dir}/result.txt",'w')as f1:
+    with open(f"{work_dir}/result.txt",'w')as f1:
         for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-            path_t=rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.txt"
-            path_p=rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.txt"
+            path_t=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.txt"
+            path_p=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.txt"
             with open(path_t) as f:
                 for line in f:
                     s=line.split()
@@ -173,12 +173,11 @@ def result_process(args):
 
 def rm_process(args):## log files of this workflow are large, so you can remove them if you want.   
     work_dir = args.auto_dir
-    df=pd.read_csv(f'/path/to/tcal_csv/{work_dir}/init_params.csv')##
+    df=pd.read_csv(f'{work_dir}/init_params.csv')##
     a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
     for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-        path=rf"/path/to/tcal_csv/{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
-        subprocess.run(['cd',path])
+        path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
         os.chdir(path)
         subprocess.run(['rm *log'],shell=True)## you can add 'rm *chk' and 'rm *fch'
 

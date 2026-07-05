@@ -8,7 +8,7 @@ MONOMER_LIST = ["benzene","naphthalene","anthracene","tetracene","pentacene","he
 
 def get_monomer_xyzR(monomer_name,Ta,Tb,Tc,A2,A3):## rotation and translation operations
     T_vec = np.array([Ta,Tb,Tc])
-    df_mono=pd.read_csv('~/path/to/monomer/{}.csv'.format(monomer_name))
+    df_mono=pd.read_csv(os.path.join(os.path.expanduser(os.environ.get('CSP_MONOMER_DIR', '~/path/to/monomer/')), '{}.csv'.format(monomer_name)))
     atoms_array_xyzR=df_mono[['X','Y','Z','R']].values
     
     ex = np.array([1.,0.,0.]); ey = np.array([0.,1.,0.]); ez = np.array([0.,0.,1.])

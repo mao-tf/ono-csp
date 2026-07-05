@@ -352,6 +352,53 @@ PYTHONPATH=src python -m csp.plot.vdw_scan \
 **実際に実装されている挙動**を tab ごとに詳しく書いたメモ。まだ全タブ分は書いていない
 （聞かれた分だけ随時追記）。
 
+### CLI系タブ（Tab 3, 4, 5, 6a, 6b, 7）の統一フォーマット（2026-07-05）
+
+「GUIは大野さんのパッケージの使い方を説明するもの」という先生方針に立ち返り、
+全CLI系タブの「How to run」を**4段構成**に統一（`app.py` の `cli_howto()` ヘルパー）：
+
+1. **What** — このステップが何をするか、大野さんのどのスクリプトが対応するか
+2. **Prepare inputs** — 事前に用意する入力ファイル名・列・値の出どころ（前のタブのどの結果を使うか）
+3. **One-time setup** — `CSP_MONOMER_DIR` 環境変数、pjsub→qsub置き換えの必要性
+4. **Run / Output** — 実行コマンドと出力ファイルの列
+
+以前はタブによってこの情報の粒度がバラバラ（Tab3だけ詳しく、Tab6はコマンド一行だけ、
+`step3_para.py`のRt/Rpがどこから来るか説明なし、等）だったのを解消した。
+
+### 大野さんのコードに見つけた不具合の修正（2026-07-05、報告事項）
+
+上記の統一作業でコマンドを実際に動かして確認する過程で、`legacy/ono_scripts/` 内に
+以下の不具合を見つけて**修正済み**（三好さんの許可のもと）。修正後、実際に
+`step1.py --init` のフルフロー（vdWスキャン→ジョブキュー登録の3イテレーション）と
+`tcal_csv.py --init`（gjfファイル生成）を実行し、正常動作を確認した。
+
+1. **`step2_para.py`**: `para_list.append(z,E1,E2)` は `list.append()` が引数を1つしか
+   取らないため実行時エラーになる。`para_list.append((z,E1,E2))`（タプル化）に修正
+2. **`step1.py`, `step2_twist.py`, `step3_para.py`, `step3_twist.py`**: いずれも
+   `df_E = df_E.append(df_newline, ignore_index=True)` を使用しているが、
+   `DataFrame.append()` は **pandas 2.0 で廃止**済み（本パッケージは `pandas>=2.0` を要求）。
+   `df_E = pd.concat([df_E, pd.DataFrame([df_newline])], ignore_index=True)` に置き換え
+3. **モノマーCSVパスのハードコード**: `make_step1.py`, `make_step2_para.py`,
+   `make_step2_twist.py`, `make_step3_para.py`, `make_step3_twist.py`, `tcal_csv.py` の
+   6ファイルすべてで `~/path/to/monomer/{monomer_name}.csv`（または`/path/to/tcal_csv/monomer/`）
+   がハードコードされていて、使うたびにソースコードの手編集が必要だった。
+   環境変数 `CSP_MONOMER_DIR`（未設定時は従来通り`~/path/to/monomer/`にフォールバック）で
+   指定できるように変更。GUI側は「Tab 1 でダウンロードしたCSVを置いたディレクトリを
+   `export CSP_MONOMER_DIR=...` で指定してください」という案内に統一
+4. **`tcal_csv.py` の `/path/to/tcal_csv/{work_dir}` という無意味な固定プレフィックス**
+   （25箇所）: `--auto-dir` で渡した実際のパスの前に、常にこの文字列が付加されてしまい、
+   `--auto-dir` オプションが事実上機能していなかった（Ono さんのローカル環境の絶対パスが
+   そのまま残っていたと思われる）。プレフィックスを削除し `--auto-dir` の値をそのまま使うよう修正。
+   `job.sh`/`tcal_1.py` のコピー元は `work_dir` ではなく **スクリプト自身のディレクトリ**
+   （`_SCRIPT_DIR`）を参照するよう修正（元コードは誤って同じ固定パス配下からコピーしようとしていた）
+5. **`tcal_csv.py` の `subprocess.run(['cd',path])`**（3箇所）: `cd`はシェル組み込みコマンドで
+   独立した実行ファイルではないため、Linux環境では`FileNotFoundError`でクラッシュする
+   （直後にある実際に効く`os.chdir(path)`より前の、無意味な死んだコードだった）。削除
+
+**変更していないもの**: `pjsub`（Fugaku/PJM向けジョブ投入）は環境依存性が高く、
+我々のSGEクラスタ向けに安全に自動書き換えできる確証がないため、GUI側で
+「qsubに置き換えてください」と案内するに留め、コード自体は変更していない。
+
 ### Tab 4: Step 2 – Long-Axis Shift
 
 **やっていることの概要**:
