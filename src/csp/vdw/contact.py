@@ -81,14 +81,22 @@ def step1a_scan(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Step 1a coarse scan (see module docstring).
 
+    `theta_ab` here is the paper's contact-direction angle β (Fig. S1a);
+    `alpha` is the paper's herringbone half-angle α.
+
     Returns (df_curves, df_init):
-    - df_curves: every VdW-feasible sweep point; columns
-      alpha, theta_ab, a, b, S (a, b rounded to 0.1 Å as in the legacy code;
-      S computed from the unrounded values).
-    - df_init: initial candidates for the DFT hill-climb; columns
-      a, b, theta, S, kind ('local_min' / 'b_contact' / 'a_contact'),
-      status='NotYet' — matching the legacy step1_init_params.csv format
-      (theta = alpha).
+    - df_curves: every sweep point (valid or not); columns
+      alpha, theta_ab, a, b, S, valid (bool — True where the SP-neighbor
+      vdW spheres do not overlap, i.e. the solid portions of the paper's
+      Fig. S1(c); False is the dashed/overlapping portion). One row per
+      (alpha, theta_ab) grid point — this is the data for a Fig. S1(c)-style
+      plot (S vs beta, one curve per alpha).
+    - df_init: initial candidates for the DFT hill-climb, extracted from the
+      *valid* points only; columns a, b, theta, S,
+      kind ('local_min' / 'b_contact' / 'a_contact'), status='NotYet' —
+      matching the legacy step1_init_params.csv format (theta = alpha). The
+      envelope of these across alpha is the vdW analogue of the paper's
+      Fig. 2(b) (S instead of the DFT-optimized E_intra(8)).
     """
     mol_l = to_layer_frame(mol)
     radii = _effective_radii(mol_l, radii_overrides)
@@ -103,17 +111,18 @@ def step1a_scan(
         a_clps = vdw_contact_distance(c_i, radii, c_i, radii, 0.0)
         b_clps = vdw_contact_distance(c_i, radii, c_i, radii, 90.0)
 
-        kept = []  # (theta_ab, a_rounded, b_rounded, S)
+        kept = []  # (theta_ab, a_rounded, b_rounded, S) -- valid points only
         for theta_ab in theta_abs:
             R = vdw_contact_distance(c_i, radii, c_t, radii, theta_ab)
             a = 2 * R * math.cos(math.radians(theta_ab))
             b = 2 * R * math.sin(math.radians(theta_ab))
-            if (a_clps > a) or (b_clps > b):
-                continue
-            kept.append((theta_ab, round(a, 1), round(b, 1), a * b))
-
-        for theta_ab, a1, b1, S in kept:
-            curve_rows.append((alpha, theta_ab, a1, b1, S))
+            valid = not ((a_clps > a) or (b_clps > b))
+            # Every point (valid or not) is kept in curve_rows so plots can
+            # reproduce the paper's Fig. S1(c) solid/dashed convention
+            # (solid = satisfies SP vdW contact, dashed = SP spheres overlap).
+            curve_rows.append((alpha, theta_ab, round(a, 3), round(b, 3), a * b, valid))
+            if valid:
+                kept.append((theta_ab, round(a, 1), round(b, 1), a * b))
 
         if kept:
             S_arr = np.array([k[3] for k in kept])
@@ -128,6 +137,8 @@ def step1a_scan(
         if progress_callback:
             progress_callback((i_alpha + 1) / len(alphas))
 
-    df_curves = pd.DataFrame(curve_rows, columns=['alpha', 'theta_ab', 'a', 'b', 'S'])
+    df_curves = pd.DataFrame(
+        curve_rows, columns=['alpha', 'theta_ab', 'a', 'b', 'S', 'valid']
+    )
     df_init = pd.DataFrame(init_rows, columns=['a', 'b', 'theta', 'S', 'kind', 'status'])
     return df_curves, df_init

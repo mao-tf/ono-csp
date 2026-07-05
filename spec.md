@@ -297,6 +297,22 @@ PYTHONPATH=src python -m csp.plot.vdw_scan \
 - 注意: GUI Tab 2 の `contact.step1a_scan` と CLI 版は同じアルゴリズムの独立実装。
   将来どちらかに一本化するのが望ましい（TODO 参照）
 
+**Tab 2 の2グラフ構成（2026-07-05 追加、論文 Fig. 2(b) / Fig. S1(c) のvdW版）**:
+- `step1a_scan` の戻り値 `df_curves` に `valid` 列（bool）を追加。β（=theta_ab）掃引の
+  全点を保持し、SP隣接のvdW接触を満たす点=True／破綻する点=Falseとして記録
+  （論文 Fig. S1(c) の実線／破線に対応）
+- **Fig. 2(b)-style タブ**: x=α, y=S。feasible領域のmin envelope（グレー線）＋
+  候補点（low-β endpoint 青／high-β endpoint 赤／interior local min 緑）。
+  点をクリックすると該当構造の9分子クラスターをプレビュー
+- **Fig. S1(c)-style タブ**: x=β, y=S。複数αを選択（デフォルトはスキャン範囲を
+  5等分した値 — α範囲5〜45°では偶然 [5,15,25,35,45] と論文の例示値に一致）。
+  各αを1色とし、有効区間=実線／無効区間=破線で描画。点クリックでプレビュー
+- クリック選択はplotlyの`on_select="rerun"`＋`customdata`（α,β,a,bを埋め込み）で実装。
+  候補リストのセレクトボックスも含め3種の入力（Fig.2b点／Fig.S1c点／リスト選択）を
+  「直前に変化したものだけを反映」する差分検知方式で統合（`st.session_state["s1vdw_current"]`）
+- 制約: Fig. S1(c)-styleタブは `df_curves`（GUI内スキャン直後のみ）が必要。
+  アップロードした`step1_init_params.csv`だけでは全掃引点がないため非表示
+
 ---
 
 ## GUI タブ構成 / Streamlit UI Layout
