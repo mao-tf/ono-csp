@@ -488,9 +488,10 @@ with tab_step1_vdw:
                 with col_b:
                     st.caption(
                         "vdW analogue of Fig. S1(c): S vs contact-direction angle "
-                        "β for a few alpha values. Solid = SP-neighbor vdW "
-                        "spheres clear (valid); dashed = they overlap "
-                        "(infeasible). Click a point to preview its structure."
+                        "β for a few alpha values. **Solid, thin, full color** = "
+                        "SP-neighbor vdW spheres clear (valid); **long-dashed, "
+                        "thick, faded** = they overlap (infeasible). Click a "
+                        "point to preview its structure."
                     )
                     alphas_avail = sorted(df_curves["alpha"].unique())
                     n_default = min(5, len(alphas_avail))
@@ -509,10 +510,16 @@ with tab_step1_vdw:
                         group_id = (sub["valid"] != sub["valid"].shift()).cumsum()
                         first = True
                         for _, seg in sub.groupby(group_id):
+                            is_valid = bool(seg["valid"].iloc[0])
                             figB.add_trace(go.Scatter(
                                 x=seg["theta_ab"], y=seg["S"], mode="lines+markers",
-                                line=dict(color=color, dash="solid" if seg["valid"].iloc[0] else "dash"),
-                                marker=dict(size=4, color=color),
+                                line=dict(
+                                    color=color,
+                                    dash="solid" if is_valid else "longdash",
+                                    width=2.5 if is_valid else 4,
+                                ),
+                                marker=dict(size=5 if is_valid else 3, color=color),
+                                opacity=1.0 if is_valid else 0.55,
                                 name=f"alpha={alpha}°", legendgroup=f"a{alpha}",
                                 showlegend=first,
                                 customdata=[[alpha, ta, a, b] for ta, a, b in
