@@ -847,14 +847,29 @@ with tab_step3:
                 min_ra = pivot.columns.to_numpy()[min_ra_idx]
                 min_rb = pivot.index.to_numpy()[min_rb_idx]
 
-                fig3 = px.imshow(
-                    pivot.values, x=pivot.columns.to_numpy(), y=pivot.index.to_numpy(),
-                    color_continuous_scale="RdBu_r",
-                    labels={"color": val_col}, aspect="auto", origin="lower",
-                )
+                # A plotly Heatmap/imshow trace doesn't reliably fire a
+                # single-click "selection" event (that's really a box/lasso
+                # select affordance for marker traces), which is why clicking
+                # anywhere but the marker overlay never registered. Building
+                # the whole map out of square markers instead — the same
+                # mechanism already proven to work for Tab 2 — makes every
+                # cell clickable.
+                n_ra_cells = max(len(pivot.columns), 1)
+                n_rb_cells = max(len(pivot.index), 1)
+                marker_px = max(3, min(700 / n_ra_cells, 500 / n_rb_cells))
+                fig3 = go.Figure()
+                fig3.add_trace(go.Scatter(
+                    x=df_vdw["Ra"], y=df_vdw["Rb"], mode="markers", name=val_col,
+                    marker=dict(
+                        symbol="square", size=marker_px,
+                        color=df_vdw[val_col], colorscale="RdBu_r",
+                        colorbar=dict(title=val_col),
+                    ),
+                    hovertemplate="Ra=%{x}<br>Rb=%{y}<br>" + val_col + "=%{marker.color:.3f}<extra></extra>",
+                ))
                 fig3.add_trace(go.Scatter(
                     x=min_ra, y=min_rb, mode="markers", name="local min",
-                    marker=dict(symbol="square-open", size=12, color="black", line=dict(width=2)),
+                    marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
                     hovertemplate="Ra=%{x}<br>Rb=%{y}<extra>local min</extra>",
                 ))
                 fig3.update_layout(
