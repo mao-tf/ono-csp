@@ -1,0 +1,6 @@
+H HF
+C RHF
+O RHF
+S RHF
+Na+ RHF
+Cl- RHF
