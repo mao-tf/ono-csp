@@ -874,6 +874,10 @@ with tab_step3:
                 fig3 = go.Figure()
                 fig3.add_trace(go.Scatter(
                     x=df_vdw["Ra"], y=df_vdw["Rb"], mode="markers", name=val_col,
+                    showlegend=False,  # clicking a legend entry toggles trace
+                    # visibility in Plotly — for this trace that hides the
+                    # entire map, which just looks like it broke. The
+                    # colorbar already conveys what this trace is.
                     marker=dict(
                         symbol="square", size=marker_px,
                         color=df_vdw[val_col], colorscale="RdBu_r",
@@ -883,6 +887,7 @@ with tab_step3:
                 ))
                 fig3.add_trace(go.Scatter(
                     x=min_ra, y=min_rb, mode="markers", name="local min",
+                    showlegend=False,  # explained in the caption below instead
                     marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
                     hovertemplate="Ra=%{x}<br>Rb=%{y}<extra>local min</extra>",
                 ))
