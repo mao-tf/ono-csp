@@ -856,7 +856,13 @@ with tab_step3:
                 # cell clickable.
                 n_ra_cells = max(len(pivot.columns), 1)
                 n_rb_cells = max(len(pivot.index), 1)
-                marker_px = max(3, min(700 / n_ra_cells, 500 / n_rb_cells))
+                # Ra and Rb use the same 0.1 Å step, so cells are square in
+                # data units — but without locking the axes to a 1:1 scale
+                # (below), Plotly renders Ra/Rb at different px-per-Å and a
+                # single "square" marker size leaves gaps along one axis
+                # (the visible black line). Pick one marker size from the
+                # denser axis; scaleanchor makes both axes share that scale.
+                marker_px = max(3, 650 / max(n_ra_cells, n_rb_cells))
                 fig3 = go.Figure()
                 fig3.add_trace(go.Scatter(
                     x=df_vdw["Ra"], y=df_vdw["Rb"], mode="markers", name=val_col,
@@ -877,6 +883,10 @@ with tab_step3:
                     yaxis_title="Rb (Å, layer offset along b)",
                     margin=dict(l=20, r=20, t=30, b=20),
                 )
+                # Lock Rb's px-per-Å scale to match Ra's, so the square
+                # markers (equal size in px, equal 0.1 Å step in data) tile
+                # without gaps regardless of the plot's rendered aspect ratio.
+                fig3.update_yaxes(scaleanchor="x", scaleratio=1)
                 event3 = st.plotly_chart(
                     fig3, width="stretch", on_select="rerun", key="s3vdw_fig"
                 )
