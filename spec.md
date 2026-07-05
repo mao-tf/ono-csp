@@ -210,8 +210,11 @@ E_int(near) = E_intra(6) + 2 × E_inter(7)
 - **DFT 系ステップ（Step 1b, 2, 3, 4a/4b, 5）**: 計算機接続・計算時間の問題から **GUI からは実行しない**。
   GUI には「このコード（CLI）で実行できます」という紹介と実行コマンドを表示するのみ
 - **結果表示**: 各タブに結果 CSV の **drag & drop 欄**を置く。
-  未ドロップ時は `example/pentacene/` の大野さんによる事前計算サンプルを表示（サンプルファイルは後日受領）。
+  未ドロップ時は `example/pentacene/` の大野さんによる事前計算サンプルを表示。
   ユーザーがファイルをドロップしたらそちらのグラフ・3D モデル表示に切り替わる
+  ※ **サンプル（論文で使った図のデータ）の同梱は後回しにする（2026-07-05 決定）**。
+  GUI はサンプル未配置でも動作し「Sample results are not bundled yet」表示になる。
+  受領したら `example/pentacene/README.md` の表に従って配置するだけでよい
 - 機能は最小限に：「基本の流れが分かりやすくパッケージ化されている」ことを優先（ミーティングでの先生方針）
 
 以降のワイヤーフレーム中の `[Run DFT Jobs]` 等の DFT 実行ボタンはこの方針により
@@ -477,6 +480,31 @@ stmol = ">=0.0.9"      # py3Dmol Streamlit 連携
 | 3 | Step 4a, 4b 精密化 + Tab 6 UI | |
 | 4 | Transfer integral (松井先生コード統合) + Tab 7 UI | |
 | 5 | README 英語化 + example/ 計算結果同梱 + GitHub 公開 + Zenodo DOI | 論文投稿前 |
+
+---
+
+## 残タスク / TODO（2026-07-05 時点）
+
+**後回し（保留中）**:
+- [ ] 論文図のサンプル結果 CSV を `example/pentacene/` に同梱（大野さんから受領後。
+      配置方法は `example/pentacene/README.md` 参照。後回し決定 2026-07-05）
+
+**受領・回答待ち（大野さん）**:
+- [ ] モノマー CSV の座標規約照合（面法線が x か y か — 「大野コード対応表」要確認3）。
+      受領したら Tab 2 のスキャン結果と大野さんの step1_init_params.csv を数値比較して検証
+- [ ] tcal で pbepbe を使っていた経緯の確認（論文の図が pbepbe 由来なら
+      2026-07-05 の b3lyp/6-31g* 修正を戻す必要がある）
+
+**公開前の作業**:
+- [ ] Zenodo 連携 → GitHub Release → DOI 取得（三好さんが対応。著者表記は Ohno で確定済み）
+- [ ] CITATION.cff / .zenodo.json の追加（DOI 取得のタイミングで。著者: Mao Miyoshi, Ryota Ohno）
+- [ ] README の英語チュートリアル拡充（インストール〜Tab 2 スキャン〜CLI 実行の通し手順）
+- [ ] 論文 Methods への URL + DOI 記載（論文改訂時）
+
+**任意（余裕があれば）**:
+- [ ] legacy スクリプトのハードコードパス（`~/path/to/monomer/` など）を引数化
+- [ ] Tab 2 プロットのクリックで 3D プレビュー選択（現状はセレクトボックス）
+- [ ] tcal result.txt → CSV の変換スクリプト（Tab 7 にそのままドロップできるように）
 
 ---
 
