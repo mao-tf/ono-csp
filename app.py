@@ -527,10 +527,13 @@ with tab_step1_vdw:
                         xaxis_title="beta (deg, T-contact direction)",
                         yaxis_title="S = a×b (Å²)",
                         margin=dict(l=20, r=20, t=30, b=20),
-                        uirevision="s1vdw_figB",  # keep pan/zoom stable across click-triggered reruns
                     )
                     if y_range:
-                        figB.update_yaxes(range=y_range, autorange=False)
+                        # fixedrange locks the y-axis so the click-triggered
+                        # rerun (via on_select) can never leave it at Plotly's
+                        # own autorange — without this the floor flickered
+                        # between 0 and 40 on alternating clicks.
+                        figB.update_yaxes(range=y_range, autorange=False, fixedrange=True)
                     event_b = st.plotly_chart(
                         figB, width="stretch", on_select="rerun", key="s1vdw_figB"
                     )
