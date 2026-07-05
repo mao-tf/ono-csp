@@ -825,6 +825,14 @@ with tab_step3:
 
         df_vdw = st.session_state.get("s3vdw_df")
         params3 = st.session_state.get("s3vdw_params")
+        if df_vdw is not None and "cz" not in df_vdw.columns:
+            # Stale cache from before the cz column existed (session state
+            # survives code hot-reloads) — drop it so the UI just asks for a
+            # fresh scan instead of crashing on the missing column.
+            for k in ("s3vdw_df", "s3vdw_params", "s3vdw_current"):
+                st.session_state.pop(k, None)
+            df_vdw = params3 = None
+            st.info("The cached vdW scan was from an older version of this app — please run it again.")
         if df_vdw is not None and params3 is not None:
             if st.button("Clear vdW scan results", key="s3vdw_clear"):
                 for k in ("s3vdw_df", "s3vdw_params", "s3vdw_current"):
