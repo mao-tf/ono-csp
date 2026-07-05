@@ -14,6 +14,14 @@ Execution policy (spec.md "実行方式", meeting 2026-07-04):
   shows the commands and displays results instead.
 - Every results section accepts a drag & dropped CSV; until one is dropped it
   falls back to the precomputed sample results bundled in example/pentacene/.
+
+Tab layout (spec.md "大野コード対応表", 2026-07-05): Ono's actual pipeline is
+3 steps (step1 -> step2 para/twist -> step3 para/twist -> tcal), not the
+5-section paper draft this spec.md started from. Tabs are grouped by step
+number, with para/twist as sub-tabs within Step 2 and Step 3 (they are
+alternative paths, not sequential sub-stages) — Step 1's vdW pre-scan and
+DFT refinement are sequential instead, so they're plain sections rather than
+sub-tabs.
 """
 from __future__ import annotations
 
@@ -214,11 +222,11 @@ def cli_howto(
 ) -> None:
     """Standard 4-part "how to run this step with Ono's package" block.
 
-    Every CLI tab (3, 4, 5, 6a, 6b, 7) uses the same shape so a user who has
-    read one tab knows where to look in the others: what the step computes,
-    what input file(s) to prepare by hand (and where their values come
-    from), what one-time environment setup is needed, then the command and
-    the resulting output file.
+    Every CLI section (Step 1 DFT, Step 2/3 para/twist, Transfer Integrals)
+    uses the same shape so a user who has read one knows where to look in
+    the others: what the step computes, what input file(s) to prepare by
+    hand (and where their values come from), what one-time environment
+    setup is needed, then the command and the resulting output file.
     """
     st.info(what)
     st.markdown("**1. Prepare inputs**")
@@ -249,14 +257,12 @@ _SETUP_SCHEDULER = (
 # ══════════════════════════════════════════════════════════
 #  Tabs
 # ══════════════════════════════════════════════════════════
-tab_setup, tab_step1_vdw, tab_step1_dft, tab_step2, tab_step3, tab_step4, tab_step5 = st.tabs([
+tab_setup, tab_step1, tab_step2, tab_step3, tab_transfer = st.tabs([
     "1. Molecule Setup",
-    "2. Step 1 – Intralayer vdW Scan",
-    "3. Step 1 – DFT-D Optimization",
-    "4. Step 2 – Long-Axis Shift",
-    "5. Step 3 – Interlayer Stacking",
-    "6. Step 2/3 – Twist Variant",
-    "7. Transfer Integrals",
+    "2. Step 1 – Intralayer",
+    "3. Step 2 – Long-Axis Shift",
+    "4. Step 3 – Interlayer Stacking",
+    "5. Transfer Integrals",
 ])
 
 
@@ -326,12 +332,13 @@ with tab_setup:
 
 
 # ══════════════════════════════════════════════════════════
-#  Tab 2: Step 1 – Intralayer vdW Scan  (runs in the GUI)
+#  Tab 2: Step 1 – Intralayer (vdW pre-scan, then DFT refinement)
 # ══════════════════════════════════════════════════════════
-with tab_step1_vdw:
+with tab_step1:
     mol2 = st.session_state.get("molecule")
 
-    st.subheader("Run in this GUI")
+    # ─── Section: vdW pre-scan (runs in this GUI) ─────────────────
+    st.subheader("vdW pre-scan — runs in this GUI")
     st.caption(
         "Rigid-sphere vdW contact model (same algorithm as legacy "
         "step1.py --init): for each herringbone half-angle alpha, sweep the "
@@ -366,7 +373,7 @@ with tab_step1_vdw:
         st.session_state["s1vdw_yrange"] = [y_lo, s_max * 1.03]
 
     st.divider()
-    st.subheader("Results — alpha vs S = a×b")
+    st.subheader("vdW results — alpha vs S = a×b")
 
     df_curves = st.session_state.get("s1vdw_curves")
     df_init = st.session_state.get("s1vdw_init")
@@ -489,7 +496,7 @@ with tab_step1_vdw:
                         st.session_state["s1vdw_figA_prev"] = idx
 
                 st.download_button(
-                    "Download step1_init_params.csv (input for the DFT step)",
+                    "Download step1_init_params.csv (input for the DFT step below)",
                     data=df_init[["a", "b", "theta"]].assign(status="NotYet").to_csv(index=False),
                     file_name="step1_init_params.csv", mime="text/csv",
                     key="dl_s1vdw_init",
@@ -608,11 +615,10 @@ with tab_step1_vdw:
                 with col_3d_b:
                     _render_preview(df_init, key_suffix="s1vdw_B")
 
+    st.divider()
 
-# ══════════════════════════════════════════════════════════
-#  Tab 3: Step 1 – DFT-D Optimization  (CLI; results shown here)
-# ══════════════════════════════════════════════════════════
-with tab_step1_dft:
+    # ─── Section: DFT-D refinement (CLI) ──────────────────────────
+    st.subheader("DFT-D refinement — CLI")
     st.subheader("How to run (CLI)")
     cli_howto(
         what=(
@@ -625,7 +631,7 @@ with tab_step1_dft:
         prepare=(
             "- `step1_init_params.csv` (columns: `a, b, theta, status`) — "
             "generated automatically by `--init` below, using the same vdW "
-            "model as **Tab 2**. You don't need to write this by hand."
+            "model as the pre-scan above. You don't need to write this by hand."
         ),
         setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
         command=(
@@ -638,7 +644,7 @@ with tab_step1_dft:
     )
 
     st.divider()
-    st.subheader("Results — alpha vs E_intra(8)  (step1.csv)")
+    st.subheader("DFT results — alpha vs E_intra(8)  (step1.csv)")
     df, src = load_results_csv("s1dft_results", "step1.csv")
     if df is not None:
         source_badge(src)
@@ -656,122 +662,64 @@ with tab_step1_dft:
 
 
 # ══════════════════════════════════════════════════════════
-#  Tab 4: Step 2 – Long-Axis Shift  (CLI; results shown here)
+#  Tab 3: Step 2 – Long-Axis Shift  (para / twist sub-tabs)
 # ══════════════════════════════════════════════════════════
 with tab_step2:
-    st.subheader("How to run (CLI)")
-    cli_howto(
-        what=(
-            "Step 2 (para variant) scans the molecular shift z along the "
-            "long axis at the T-shaped and slipped-parallel contacts, with "
-            "the lattice fixed to the Step 1 optimum "
-            f"(`{LEGACY_DIR}/step2_para.py` + `make_step2_para.py`; "
-            "41 z-points from 0 to 4 Å in one Gaussian input via --Link1). "
-            "See spec.md \"タブ別 詳細ガイド\" for how to read the plot below."
-        ),
-        prepare=(
-            "- `step2_init_params.csv`: **one row**, columns `a, b, theta` — "
-            "take the best (a, b) at your chosen alpha from **Tab 3**'s "
-            "`step1.csv` and write it yourself (no generator script for this "
-            "one)."
-        ),
-        setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
-        command="python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene",
-        output="`<auto-dir>/step2_para.csv` — columns `z, Et, Ep` (mirrored to -4..4 Å).",
-    )
+    sub_para, sub_twist = st.tabs(["para", "twist (→ Type III)"])
 
-    st.divider()
-    st.subheader("Results — Et / Ep vs z  (step2_para.csv)")
-    df, src = load_results_csv("s2_results", "step2_para.csv")
-    if df is not None:
-        source_badge(src)
-        cols_lower = {c.lower(): c for c in df.columns}
-        if {"z", "et", "ep"} <= set(cols_lower):
-            zc, etc, epc = cols_lower["z"], cols_lower["et"], cols_lower["ep"]
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df[zc], y=df[etc], mode="lines+markers", name="E_t (T-shaped)"))
-            fig.add_trace(go.Scatter(x=df[zc], y=df[epc], mode="lines+markers", name="E_p (slipped parallel)"))
-            fig.add_trace(go.Scatter(
-                x=df[zc], y=4 * df[etc] + 2 * df[epc],
-                mode="lines", name="4·E_t + 2·E_p", line=dict(dash="dash"),
-            ))
-            fig.update_layout(
-                xaxis_title="z shift along long axis (Å)",
-                yaxis_title="E (kcal/mol)",
-                margin=dict(l=20, r=20, t=30, b=20),
-            )
-            st.plotly_chart(fig, width="stretch")
-            with st.expander("Data table"):
-                st.dataframe(df, width="stretch")
-        else:
-            line_plot_section(
-                df, "s2_plot",
-                x_candidates=["z"], y_candidates=["et", "ep", "e"],
-            )
-
-
-# ══════════════════════════════════════════════════════════
-#  Tab 5: Step 3 – Interlayer Stacking  (CLI; results shown here)
-# ══════════════════════════════════════════════════════════
-with tab_step3:
-    st.subheader("How to run (CLI)")
-    cli_howto(
-        what=(
-            "Step 3 (para variant) optimizes the interlayer c-vector "
-            "(cx, cy, cz) by 3×3×3 hill-climbing at fixed intralayer "
-            f"parameters (a, b, theta, Rt, Rp) (`{LEGACY_DIR}/step3_para.py`). "
-            "Each point computes 10 interlayer dimers; E averages the two "
-            "stacking patterns and sums the four T-shaped pairs."
-        ),
-        prepare=(
-            "- `step3_para_init_params.csv`: rows of `a, b, theta, Rt, Rp, "
-            "cx, cy, cz` (starting points). `a, b, theta` come from Step 1 "
-            "(**Tab 3**); `Rt, Rp` (long-axis shifts at the T-shaped / "
-            "slipped-parallel contacts) and the initial `cx, cy, cz` come "
-            "from the vdW interlayer-distance map "
-            "`step3_para_vdw.py` (not yet wired into this GUI — run it "
-            "separately to pick starting values)."
-        ),
-        setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
-        command=(
-            "python step3_para.py --auto-dir /path/to/workdir "
-            "--monomer-name pentacene \\\n    --num-nodes 4 --num-init 2"
-        ),
-        output=(
-            "`<auto-dir>/step3_para.csv` — columns `cx, cy, cz, a, b, theta, "
-            "Rt, Rp, E, E_i01, E_ip1, E_ip2, E_it1..4, E_i02, E_ip3, E_ip4, "
-            "status, file_name`."
-        ),
-    )
-
-    st.divider()
-    st.subheader("Results — interlayer energy map  (step3_para.csv)")
-    df, src = load_results_csv("s3_results", "step3_para.csv")
-    if df is not None:
-        source_badge(src)
-        heatmap_section(
-            df, "s3_map",
-            x_candidates=["cx", "x"],
-            y_candidates=["cy", "y"],
-            val_candidates=["e", "e_inter7", "v"],
-            val_label="E_inter (kcal/mol)",
-        )
-        st.caption(
-            "Hill-climb output is sparse (visited points only); a dense "
-            "V(x,y) map from step3_para_vdw can be dropped here too."
+    with sub_para:
+        st.subheader("How to run (CLI)")
+        cli_howto(
+            what=(
+                "Step 2 (para variant) scans the molecular shift z along the "
+                "long axis at the T-shaped and slipped-parallel contacts, "
+                "with the lattice fixed to the Step 1 optimum "
+                f"(`{LEGACY_DIR}/step2_para.py` + `make_step2_para.py`; "
+                "41 z-points from 0 to 4 Å in one Gaussian input via "
+                "--Link1). See spec.md \"タブ別 詳細ガイド\" for how to read "
+                "the plot below."
+            ),
+            prepare=(
+                "- `step2_init_params.csv`: **one row**, columns `a, b, "
+                "theta` — take the best (a, b) at your chosen alpha from "
+                "**Tab 2**'s DFT results (`step1.csv`) and write it "
+                "yourself (no generator script for this one)."
+            ),
+            setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+            command="python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene",
+            output="`<auto-dir>/step2_para.csv` — columns `z, Et, Ep` (mirrored to -4..4 Å).",
         )
 
+        st.divider()
+        st.subheader("Results — Et / Ep vs z  (step2_para.csv)")
+        df, src = load_results_csv("s2_results", "step2_para.csv")
+        if df is not None:
+            source_badge(src)
+            cols_lower = {c.lower(): c for c in df.columns}
+            if {"z", "et", "ep"} <= set(cols_lower):
+                zc, etc, epc = cols_lower["z"], cols_lower["et"], cols_lower["ep"]
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df[zc], y=df[etc], mode="lines+markers", name="E_t (T-shaped)"))
+                fig.add_trace(go.Scatter(x=df[zc], y=df[epc], mode="lines+markers", name="E_p (slipped parallel)"))
+                fig.add_trace(go.Scatter(
+                    x=df[zc], y=4 * df[etc] + 2 * df[epc],
+                    mode="lines", name="4·E_t + 2·E_p", line=dict(dash="dash"),
+                ))
+                fig.update_layout(
+                    xaxis_title="z shift along long axis (Å)",
+                    yaxis_title="E (kcal/mol)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                )
+                st.plotly_chart(fig, width="stretch")
+                with st.expander("Data table"):
+                    st.dataframe(df, width="stretch")
+            else:
+                line_plot_section(
+                    df, "s2_plot",
+                    x_candidates=["z"], y_candidates=["et", "ep", "e"],
+                )
 
-# ══════════════════════════════════════════════════════════
-#  Tab 6: Step 2/3 – Twist Variant  (CLI; results shown here)
-# ══════════════════════════════════════════════════════════
-with tab_step4:
-    sub_2t, sub_3t = st.tabs([
-        "Step 2 twist (a, b re-opt with Rt, A2)",
-        "Step 3 twist (interlayer, twist form)",
-    ])
-
-    with sub_2t:
+    with sub_twist:
         st.subheader("How to run (CLI)")
         cli_howto(
             what=(
@@ -784,10 +732,11 @@ with tab_step4:
             prepare=(
                 "- `step2_twist_init_params.csv`: rows of `theta, Rt, A2, "
                 "a, b, status`. `theta` and starting `a, b` come from Step 1 "
-                "(**Tab 3**); `Rt` (twist shift) and `A2` (torsion) are the "
-                "new values you want to try (e.g. a grid of A2 = 0..20° per "
-                "spec.md's expected naphthalene/anthracene optimum). Set "
-                "`status='NotYet'` for each row."
+                "(**Tab 2**'s DFT results); `Rt` (twist shift) and `A2` "
+                "(torsion) are the new values you want to try (e.g. a grid "
+                "of A2 = 0..20° per spec.md's expected "
+                "naphthalene/anthracene optimum). Set `status='NotYet'` for "
+                "each row."
             ),
             setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
             command=(
@@ -816,7 +765,62 @@ with tab_step4:
                 "(paper §2.4)."
             )
 
-    with sub_3t:
+
+# ══════════════════════════════════════════════════════════
+#  Tab 4: Step 3 – Interlayer Stacking  (para / twist sub-tabs)
+# ══════════════════════════════════════════════════════════
+with tab_step3:
+    sub_para3, sub_twist3 = st.tabs(["para", "twist (→ Type III)"])
+
+    with sub_para3:
+        st.subheader("How to run (CLI)")
+        cli_howto(
+            what=(
+                "Step 3 (para variant) optimizes the interlayer c-vector "
+                "(cx, cy, cz) by 3×3×3 hill-climbing at fixed intralayer "
+                f"parameters (a, b, theta, Rt, Rp) (`{LEGACY_DIR}/step3_para.py`). "
+                "Each point computes 10 interlayer dimers; E averages the two "
+                "stacking patterns and sums the four T-shaped pairs."
+            ),
+            prepare=(
+                "- `step3_para_init_params.csv`: rows of `a, b, theta, Rt, Rp, "
+                "cx, cy, cz` (starting points). `a, b, theta` come from Step 1 "
+                "(**Tab 2**'s DFT results); `Rt, Rp` (long-axis shifts at the "
+                "T-shaped / slipped-parallel contacts) and the initial "
+                "`cx, cy, cz` come from the vdW interlayer-distance map "
+                "`step3_para_vdw.py` (not yet wired into this GUI — run it "
+                "separately to pick starting values)."
+            ),
+            setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
+            command=(
+                "python step3_para.py --auto-dir /path/to/workdir "
+                "--monomer-name pentacene \\\n    --num-nodes 4 --num-init 2"
+            ),
+            output=(
+                "`<auto-dir>/step3_para.csv` — columns `cx, cy, cz, a, b, theta, "
+                "Rt, Rp, E, E_i01, E_ip1, E_ip2, E_it1..4, E_i02, E_ip3, E_ip4, "
+                "status, file_name`."
+            ),
+        )
+
+        st.divider()
+        st.subheader("Results — interlayer energy map  (step3_para.csv)")
+        df, src = load_results_csv("s3_results", "step3_para.csv")
+        if df is not None:
+            source_badge(src)
+            heatmap_section(
+                df, "s3_map",
+                x_candidates=["cx", "x"],
+                y_candidates=["cy", "y"],
+                val_candidates=["e", "e_inter7", "v"],
+                val_label="E_inter (kcal/mol)",
+            )
+            st.caption(
+                "Hill-climb output is sparse (visited points only); a dense "
+                "V(x,y) map from step3_para_vdw can be dropped here too."
+            )
+
+    with sub_twist3:
         st.subheader("How to run (CLI)")
         cli_howto(
             what=(
@@ -826,9 +830,9 @@ with tab_step4:
             prepare=(
                 "- `step3_twist_init_params.csv`: rows of `a, b, theta, Rt, "
                 "A2, cx, cy, cz` (starting points). `a, b, theta, Rt, A2` "
-                "come from the Step 2 twist result (left sub-tab) at the "
-                "energy minimum; initial `cx, cy, cz` are a guess (0 or "
-                "small values) that the hill-climb will refine."
+                "come from the Step 2 twist result (**Tab 3**, twist "
+                "sub-tab) at the energy minimum; initial `cx, cy, cz` are a "
+                "guess (0 or small values) that the hill-climb will refine."
             ),
             setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
             command=(
@@ -852,9 +856,9 @@ with tab_step4:
 
 
 # ══════════════════════════════════════════════════════════
-#  Tab 7: Transfer Integrals  (CLI; results shown here)
+#  Tab 5: Transfer Integrals  (CLI; results shown here)
 # ══════════════════════════════════════════════════════════
-with tab_step5:
+with tab_transfer:
     st.subheader("How to run (CLI)")
     cli_howto(
         what=(
@@ -870,8 +874,8 @@ with tab_step5:
         prepare=(
             "- `<auto-dir>/init_params.csv`: rows of `a, b, theta, A2, z` — "
             "the representative arrangements (e.g. the R-form optimum from "
-            "**Tab 3**, and any Type II/III/IV structures from Tabs 5/6) "
-            "you want J for."
+            "**Tab 2**'s DFT results, and any Type II/III/IV structures "
+            "from **Tab 4**'s para/twist sub-tabs) you want J for."
         ),
         setup=(
             _SETUP_MONOMER_ENV.replace("Tab 1", "Tab 1 — this feeds `get_monomer_xyzR` in tcal_csv.py too") + "\n"
