@@ -41,6 +41,7 @@ Streamlit（英語）、7タブ構成（Tab 1: Molecule Setup〜Tab 7: Transfer 
 - vdW スキャン（Step 1a）のみ GUI 内で実行。DFT 系ステップは CLI 実行とし、GUI はコマンド紹介と結果 CSV の drag & drop 表示のみ
 - 結果表示は「ユーザー CSV 未ドロップ時は example/pentacene/ のサンプルを表示、ドロップで切替」方式
 - サンプル（論文図のデータ）同梱は**後回し**（2026-07-05 決定）。残タスク一覧は spec.md「残タスク / TODO」を参照
+- 各タブの変数・入出力・グラフの読み方は spec.md「タブ別 詳細ガイド」に記載（質問があるたびに追記していく方式）
 
 ---
 
