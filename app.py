@@ -848,7 +848,8 @@ with tab_step3:
                 min_rb = pivot.index.to_numpy()[min_rb_idx]
 
                 fig3 = px.imshow(
-                    pivot, color_continuous_scale="RdBu_r",
+                    pivot.values, x=pivot.columns.to_numpy(), y=pivot.index.to_numpy(),
+                    color_continuous_scale="RdBu_r",
                     labels={"color": val_col}, aspect="auto", origin="lower",
                 )
                 fig3.add_trace(go.Scatter(
