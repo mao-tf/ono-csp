@@ -868,8 +868,13 @@ with tab_step3:
                 pts3 = event3.selection.points if (event3 and event3.selection) else []
                 if pts3:
                     p0 = pts3[0]
-                    if p0.get("customdata") is not None:
-                        ra_sel, rb_sel = p0["customdata"][0], p0["customdata"][1]
+                    cd = p0.get("customdata")
+                    # The local-min scatter overlay carries customdata=[Ra, Rb],
+                    # but a click can also land on the base heatmap trace, whose
+                    # customdata (if any) is a different shape (e.g. just the
+                    # z-value) — fall back to the point's plain x/y in that case.
+                    if cd is not None and len(cd) >= 2:
+                        ra_sel, rb_sel = cd[0], cd[1]
                     else:
                         ra_sel, rb_sel = p0.get("x"), p0.get("y")
                     if ra_sel is not None and rb_sel is not None:
