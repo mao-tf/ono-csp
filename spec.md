@@ -324,6 +324,17 @@ PYTHONPATH=src python -m csp.plot.vdw_scan \
   ドロップダウン・複数選択等のロジックはテスト済みだが、実ブラウザでのクリック動作は
   三好さんご自身での確認をお願いしたい
 
+**バグ修正・凡例改善（2026-07-05 三好さんフィードバック反映 その2）**:
+- 凡例名を大野コードの用語に統一: `low-β endpoint`→**b-stack**、`high-β endpoint`→**a-stack**、
+  `interior local min of S`→**local min**（extract_init.py の structure_type と同じ語彙）
+- **不具合修正**: Fig. S1(c)-style のy軸下限が、クリックのたびに 0 と 40 を交互に
+  行き来する不具合を修正。原因は、y軸範囲を選択中のα曲線から**毎回再計算**していたため、
+  Plotly側のUI状態保持（ズーム等）とPython側の再計算値がレンダリングごとに競合していたこと。
+  対策: スキャン実行時に一度だけ `df_curves['S']` 全体の最大値からY軸範囲を計算し
+  `session_state["s1vdw_yrange"]` にキャッシュ、以降は選択αに関わらず常に同じ値を使用
+  （`uirevision`も固定文字列にして安定化）。これによりα選択を変えても軸スケールが
+  一定になり、複数α間の比較もしやすくなった副次効果あり
+
 ---
 
 ## GUI タブ構成 / Streamlit UI Layout

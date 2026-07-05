@@ -315,6 +315,12 @@ with tab_step1_vdw:
         st.session_state["s1vdw_curves"] = df_curves
         st.session_state["s1vdw_init"] = df_init
         st.session_state["s1vdw_scan_mol"] = mol2.name
+        # Cache the S-axis range once per scan so it's byte-identical on every
+        # rerun (recomputing it per-render caused the y-axis floor to flicker
+        # between 0 and 40 on each click — see spec.md).
+        s_max = float(df_curves["S"].max())
+        y_lo = 40.0 if s_max > 40.0 else 0.0
+        st.session_state["s1vdw_yrange"] = [y_lo, s_max * 1.03]
 
     st.divider()
     st.subheader("Results — alpha vs S = a×b")
@@ -325,7 +331,7 @@ with tab_step1_vdw:
     if df_init is not None:
         src2 = "scan"
         if st.button("Clear scan results", key="s1vdw_clear"):
-            for k in ("s1vdw_curves", "s1vdw_init", "s1vdw_scan_mol"):
+            for k in ("s1vdw_curves", "s1vdw_init", "s1vdw_scan_mol", "s1vdw_yrange"):
                 st.session_state.pop(k, None)
             st.rerun()
     else:
@@ -343,9 +349,9 @@ with tab_step1_vdw:
         source_badge(src2)
 
         _KIND_LABEL = {
-            "b_contact": "low-β endpoint",
-            "a_contact": "high-β endpoint",
-            "local_min": "interior local min of S",
+            "b_contact": "b-stack",
+            "a_contact": "a-stack",
+            "local_min": "local min",
         }
         _KIND_COLOR = {
             "b_contact": "#1f77b4",
@@ -516,16 +522,15 @@ with tab_step1_vdw:
                             ))
                             first = False
 
-                    y_vals = [v for tr in figB.data if tr.y is not None for v in tr.y]
-                    if y_vals:
-                        y_max = max(y_vals)
-                        y_lo = 40 if y_max > 40 else 0
-                        figB.update_yaxes(range=[y_lo, y_max * 1.03])
+                    y_range = st.session_state.get("s1vdw_yrange")
                     figB.update_layout(
                         xaxis_title="beta (deg, T-contact direction)",
                         yaxis_title="S = a×b (Å²)",
                         margin=dict(l=20, r=20, t=30, b=20),
+                        uirevision="s1vdw_figB",  # keep pan/zoom stable across click-triggered reruns
                     )
+                    if y_range:
+                        figB.update_yaxes(range=y_range, autorange=False)
                     event_b = st.plotly_chart(
                         figB, width="stretch", on_select="rerun", key="s1vdw_figB"
                     )
