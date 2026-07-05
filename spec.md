@@ -885,6 +885,12 @@ stmol = ">=0.0.9"      # py3Dmol Streamlit 連携
 - [x] ~~`step3_para_vdw.py`の`get_monomer_xyzR`呼び出しの引数過多バグ~~ → 2026-07-06 修正・動作確認済み
 - [ ] **新規（2026-07-06）**: `(a,b,theta,Rt,Rp)`の固定パラメータの組み合わせを実際何パターン
       試したのか（コード上は1回の呼び出しにつき1組で、複数パターンを自動で振るループがない）
+- [ ] **新規（2026-07-06）**: Fig.7(c)は論文で「a, b, ΔzTの3変数を最適化」と書かれているが、
+      `step2_twist.py`は`Rt`(=ΔzT)を固定値として渡し`a,b`のみ自動最適化する設計。
+      Rt自体を手動グリッドで振って最小値を選ぶ運用だったのか確認したい
+      （Tab4のRt/Rp未探索問題と同根）
+- [ ] **新規（2026-07-06）**: 論文§2.5（Fig.8、θ'_incl・φ'_inclの不均一傾斜、N2→Type IV）に
+      対応するコード・タブが未特定。Tab4 paraのRp≠0探索と同じ仕組みなのか確認したい
 
 **公開前の作業**:
 - [ ] Zenodo 連携 → GitHub Release → DOI 取得（三好さんが対応。著者表記は Ohno で確定済み）
@@ -913,13 +919,16 @@ stmol = ">=0.0.9"      # py3Dmol Streamlit 連携
 
 ## 論文対応表 / Paper Section Mapping
 
-| 論文 §| 図 | Package Step | 主変数 |
-|------|----|----|------|
-| 2.1 | Fig.2, S1, S2 | Step 1a + 1b | α, a, b |
-| 2.2 | Fig.5, S5, S6 | Step 2 | θ_incl, φ_incl |
-| 2.3 | Fig.6, S7 | Step 3 | x, y, z |
-| 2.4 | Fig.7 | Step 4a | θ_twist |
-| 2.5 | Fig.8 | Step 4b | θ'_incl, φ'_incl |
-| 2.6 | Fig.S9, Table1 | (除外) | G1〜G5外挿 |
-| 2.7 | Fig.10 | (参考) | R形偏差 |
-| 2.8 | Fig.11 | Step 5 | J |
+> **2026-07-06 更新**: 当初ドラフト（Step 1a/1b/2/3/4a/4b/5 という論文構成そのままの粒度）から、
+> 大野さんの実コード受領後に確認できた**実際のTab/スクリプト対応**に更新。信頼度も付記。
+
+| 論文 §| 図 | 対応するTab・スクリプト | 主変数 | 確認状況 |
+|------|----|----|------|------|
+| 2.1 | Fig.2, S1, S2 | Tab 2（vdW: `step1a_scan`／DFT: `step1.py`） | α(theta), a, b | 確認済み |
+| 2.2 | Fig.5, S5, S6 | Tab 3 paraサブタブ（`step2_para.py`） | z(=θ_incl), θ_twist系はTab3 twist | 確認済み。ただしφ_incl中間値(N形)を探すコードは未発見 |
+| 2.3 | Fig.6, S7 | Tab 4 paraサブタブ（vdW: `interlayer_vdw_scan`／DFT: `step3_para.py`） | Ra,Rb(x,y), z | 確認済み。vdWマップGUI実装済み(2026-07-06) |
+| 2.4 | Fig.7 | Tab 3 twist（`step2_twist.py`）→ Tab 4 twist（`step3_twist.py`） | θ_twist(A2), ΔzT(Rt) | 確認済み。ただし論文はa,b,ΔzT**3変数**最適化と書くが`step2_twist.py`はRt固定・a,b自動最適化のみ（要確認） |
+| 2.5 | Fig.8 | 未特定（おそらくTab4 para の Rp≠0探索と同じ仕組み） | θ'_incl, φ'_incl | **未確認**（N形探索コード不在の問題と同根） |
+| 2.6 | Fig.S9, Table1 | `legacy/ono_scripts/tot_energy/`（csp本体には未統合、方針確認中） | G1〜G5外挿 | 確認済み（スコープ判断は三好さんの回答待ち） |
+| 2.7 | Fig.10 | （参考、専用スクリプトなし） | R形偏差 | 未調査 |
+| 2.8 | Fig.11 | Tab 5（`tcal_csv/`） | J | 確認済み |
