@@ -854,7 +854,6 @@ with tab_step3:
                 fig3.add_trace(go.Scatter(
                     x=min_ra, y=min_rb, mode="markers", name="local min",
                     marker=dict(symbol="square-open", size=12, color="black", line=dict(width=2)),
-                    customdata=np.stack([min_ra, min_rb], axis=-1),
                     hovertemplate="Ra=%{x}<br>Rb=%{y}<extra>local min</extra>",
                 ))
                 fig3.update_layout(
@@ -867,16 +866,13 @@ with tab_step3:
                 )
                 pts3 = event3.selection.points if (event3 and event3.selection) else []
                 if pts3:
+                    # Both the heatmap and the local-min scatter overlay are
+                    # built with x=Ra, y=Rb directly, so the point's plain x/y
+                    # already is the (Ra, Rb) pair — no need for customdata
+                    # (whose shape differs unpredictably between trace types
+                    # and caused crashes both as a short list and as a dict).
                     p0 = pts3[0]
-                    cd = p0.get("customdata")
-                    # The local-min scatter overlay carries customdata=[Ra, Rb],
-                    # but a click can also land on the base heatmap trace, whose
-                    # customdata (if any) is a different shape (e.g. just the
-                    # z-value) — fall back to the point's plain x/y in that case.
-                    if cd is not None and len(cd) >= 2:
-                        ra_sel, rb_sel = cd[0], cd[1]
-                    else:
-                        ra_sel, rb_sel = p0.get("x"), p0.get("y")
+                    ra_sel, rb_sel = p0.get("x"), p0.get("y")
                     if ra_sel is not None and rb_sel is not None:
                         ident = (round(float(ra_sel), 1), round(float(rb_sel), 1))
                         if st.session_state.get("s3vdw_fig_prev") != ident:
