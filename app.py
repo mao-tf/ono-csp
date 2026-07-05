@@ -554,9 +554,7 @@ with tab_step4:
             "Step 2 (twist variant, → Type III packing with glide symmetry): "
             "introduces the T-contact long-axis shift Rt and the torsion A2, "
             "then re-optimizes (a, b) by hill-climbing at each fixed "
-            "(theta, Rt, A2) (legacy step2_twist.py; E = 4·E_t + 2·E_p1). "
-            "Note: the file's header comment mentions pbepbe+D3BJ but the "
-            "route line is B3LYP+GD3 — being confirmed with Ono."
+            "(theta, Rt, A2) (legacy step2_twist.py; E = 4·E_t + 2·E_p1)."
         )
         st.code(
             "python step2_twist.py --auto-dir /path/to/workdir --monomer-name naphthalene \\\n"
@@ -617,8 +615,7 @@ with tab_step5:
         "is Ono's slightly modified copy). For each arrangement row "
         "(a, b, theta, A2, z) it builds T-shaped and slipped-parallel dimer "
         "inputs, runs Gaussian16, and extracts the HOMO-HOMO transfer "
-        "integral. NOTE: the legacy inputs use pbepbe/6-311G** while the "
-        "paper's METHOD says B3LYP/6-31G* — being confirmed with Ono."
+        "integral. MOs are computed at B3LYP/6-31G* (paper METHOD)."
     )
     st.code(
         """# edit the hardcoded /path/to/tcal_csv/ paths and job.sh for your cluster first

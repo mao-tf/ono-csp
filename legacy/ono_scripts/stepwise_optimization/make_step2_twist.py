@@ -1,4 +1,3 @@
-##pbepbe+d3bjで計算
 import os
 import numpy as np
 import pandas as pd
