@@ -5,3 +5,4 @@ pyyaml>=6.0
 streamlit>=1.35
 plotly>=5.0
 py3Dmol>=2.0
+matplotlib>=3.7
