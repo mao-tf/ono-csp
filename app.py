@@ -665,23 +665,20 @@ with tab_step1:
     df, src = load_results_csv("s1dft_results", "step1.csv")
     if df is not None:
         source_badge(src)
-        line_plot_section(
-            df, "s1dft_plot",
-            x_candidates=["theta", "alpha"],
-            y_candidates=["e", "e_intra8"],
-            agg_min=True,
-        )
         st.caption(
-            "E = 4·E_t + 2·E_p1 + 2·E_p2 (kcal/mol). The minimum over the "
-            "hill-climb history at each alpha is the optimized E_intra(8); "
-            "its global minimum identifies the R-form (alpha ≈ 25°)."
+            "E = 4·E_t + 2·E_p1 + 2·E_p2 (kcal/mol). Its global minimum "
+            "identifies the R-form (alpha ≈ 25°)."
         )
 
-        st.divider()
-        st.subheader("Fig. 2(b)-style: branch-classified E_intra(8) vs alpha")
         if mol2 is None:
             st.info("Select a molecule in Tab 1 first (needed to re-derive the "
-                     "a-stack/b-stack/local-min branches and the 3D preview).")
+                     "a-stack/b-stack/local-min branches and the 3D preview). "
+                     "Showing the raw hill-climb history instead:")
+            line_plot_section(
+                df, "s1dft_plot",
+                x_candidates=["theta", "alpha"],
+                y_candidates=["e", "e_intra8"],
+            )
         else:
             st.caption(
                 "step1.csv alone doesn't record which of the 2-3 seeds per "
