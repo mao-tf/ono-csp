@@ -957,8 +957,12 @@ stmol = ">=0.0.9"      # py3Dmol Streamlit 連携
       → **2026-07-06 一部完了**。大野さんから受領したペンタセン実データ2本
       （`step1.csv` 2692行、`step2_para.csv` 81行）を`example/pentacene/`に配置し、
       GUI（Tab 2・Tab 3 para）で正しく読み込めることを確認済み。
-      残り5ファイル（`step1_init_params.csv`, `step2_twist.csv`, `step3_para.csv`,
-      `step3_twist.csv`, `transfer_integrals.csv`）は引き続き未受領
+      さらに`step1_init_params.csv`（vdW初期候補）は大野さんから受領していないが、
+      `step1.py`の`init_process()`をペンタセンでローカル実行するだけで再現可能
+      （DFT不要、数秒で完了）と分かったので生成して配置済み。受領済みstep1.csvの
+      22候補と完全一致することも検証済み。
+      残り4ファイル（`step2_twist.csv`, `step3_para.csv`, `step3_twist.csv`,
+      `transfer_integrals.csv`）は大野さんからの受領待ち
       （`example/pentacene/README.md`に受領状況を一覧化済み）
 
 **受領・回答待ち（大野さん）**:
