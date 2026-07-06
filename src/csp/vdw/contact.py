@@ -126,7 +126,15 @@ def step1a_scan(
 
         if kept:
             S_arr = np.array([k[3] for k in kept])
+            endpoints = {(kept[0][1], kept[0][2]), (kept[-1][1], kept[-1][2])}
             for idx in signal.argrelmin(S_arr, order=argrelmin_order)[0]:
+                # Skip an "interior" local minimum that actually coincides
+                # with the a-stack/b-stack endpoint (a,b) already listed
+                # below -- otherwise the same converged structure shows up
+                # twice (as both "local min" and "a-stack"/"b-stack"),
+                # which is confusing/redundant on the alpha-vs-S(E) plot.
+                if (kept[idx][1], kept[idx][2]) in endpoints:
+                    continue
                 init_rows.append((kept[idx][1], kept[idx][2], alpha, kept[idx][3],
                                   'local_min', 'NotYet'))
             init_rows.append((kept[0][1], kept[0][2], alpha, kept[0][3],

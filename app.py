@@ -397,6 +397,18 @@ with tab_step1:
                 df_init = df_up.rename(columns={"s": "S"})
                 if "S" not in df_init.columns:
                     df_init["S"] = df_init["a"] * df_init["b"]
+                if src2 == "sample":
+                    # step1_init_params.csv alone can't feed the Fig. S1(c)
+                    # sub-tab (needs the full per-alpha beta sweep, not just
+                    # the extracted candidates) -- load the matching bundled
+                    # curves file directly if one's there (no separate
+                    # uploader for it; it's a fixed companion to the sample).
+                    curves_path = EXAMPLE_DIR / "step1_vdw_curves.csv"
+                    if curves_path.exists():
+                        try:
+                            df_curves = pd.read_csv(curves_path)
+                        except Exception:
+                            df_curves = None
             else:
                 st.warning("Expected columns a, b, theta (legacy step1_init_params.csv format).")
 

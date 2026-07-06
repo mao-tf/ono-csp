@@ -83,11 +83,24 @@ def classify_and_fold_step1_results(
     }
 
     rows = []
-    for seed in df_init.itertuples():
+    converged = {}  # theta -> {(a_f, b_f) already claimed by a-stack/b-stack}
+    # Process a/b-stack endpoints before local_min so a local_min that
+    # converges onto the exact same point (a common outcome once the
+    # hill-climb actually runs -- the "seed" only picks the starting point,
+    # not a separate final structure) can be recognized as redundant and
+    # dropped, instead of duplicating an existing branch and creating a
+    # jump discontinuity where it happens to differ.
+    order = {"b_contact": 0, "a_contact": 0, "local_min": 1}
+    for seed in sorted(df_init.itertuples(), key=lambda s: order.get(s.kind, 1)):
         a_f, b_f, E_f = _replay_hill_climb(lookup, seed.theta, seed.a, seed.b)
         if E_f is None:
             continue
-        rows.append({"theta": round(seed.theta, 1), "a": a_f, "b": b_f, "E": E_f,
+        theta_r = round(seed.theta, 1)
+        point = (a_f, b_f)
+        if seed.kind == "local_min" and point in converged.get(theta_r, set()):
+            continue
+        converged.setdefault(theta_r, set()).add(point)
+        rows.append({"theta": theta_r, "a": a_f, "b": b_f, "E": E_f,
                       "kind": seed.kind, "folded": False})
 
     df_branches = pd.DataFrame(rows)
