@@ -99,25 +99,61 @@ def cluster9(
 
 def dimer(
     mol: Molecule, kind: str, a: float, b: float, theta: float, A2: float = 0.0,
-    *, in_layer_frame: bool = False,
+    z: float = 0.0, *, in_layer_frame: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Central molecule + one neighbor, as used by the Step 1 energy sum.
+    """Central molecule + one neighbor, as used by the Step 1/2 energy sums.
 
     kind: 't' -> T-shaped at (a/2, b/2) with -theta;
           'p1' -> SP along b at (0, b); 'p2' -> SP along a at (a, 0).
+    `z` shifts the neighbor along the molecular long axis (Step 2's scan
+    variable; 0 reproduces the plain Step 1 dimer).
     E_intra(8) = 4*E_t + 2*E_p1 + 2*E_p2 (legacy step1.py).
     """
     mol_l = mol if in_layer_frame else to_layer_frame(mol)
     c_i = place_in_layer(mol_l.coords, 0, 0, 0, A2, theta)
     if kind == 't':
-        c_j = place_in_layer(mol_l.coords, a/2, b/2, 0, A2, -theta)
+        c_j = place_in_layer(mol_l.coords, a/2, b/2, z, A2, -theta)
     elif kind == 'p1':
-        c_j = place_in_layer(mol_l.coords, 0, b, 0, A2, theta)
+        c_j = place_in_layer(mol_l.coords, 0, b, z, A2, theta)
     elif kind == 'p2':
-        c_j = place_in_layer(mol_l.coords, a, 0, 0, A2, theta)
+        c_j = place_in_layer(mol_l.coords, a, 0, z, A2, theta)
     else:
         raise ValueError(f"kind must be 't', 'p1' or 'p2': {kind!r}")
     return c_i, c_j
+
+
+def cluster6_inclined(
+    mol: Molecule, a: float, b: float, theta: float, zt1: float, zp: float,
+    A2: float = 0.0, *, in_layer_frame: bool = False,
+) -> Tuple[List[str], np.ndarray]:
+    """6-neighbor + center cluster under a uniform long-axis inclination
+    (paper's Fig. 5a/5c), for the Fig. 5(b)-style (theta_incl, phi_incl) map.
+
+    A uniform inclination is the plane z(x, y) = kx*x + ky*y; substituting
+    the 4 T-shaped and 2 slipped-parallel (along b) neighbor positions from
+    the 9-molecule cluster gives each neighbor's z purely in terms of two
+    free parameters `zt1` (T-neighbor at (a/2, b/2)) and `zp` (SP-neighbor
+    at (0, b)) -- verified algebraically to reproduce the plane equation
+    exactly (spec.md "N形2次元マップの再構成方法"). zt1=zp=0 is the flat
+    R-form; zp=0, zt1!=0 is the glide-symmetric G-form direction
+    (equivalent to step2_para.py's single-z scan); zt1 != zp/2 breaks glide
+    symmetry (N-form direction).
+    """
+    mol_l = mol if in_layer_frame else to_layer_frame(mol)
+    c0 = place_in_layer(mol_l.coords, 0.0, 0.0, 0.0, A2, theta)
+    configs = [
+        (a/2,  b/2,  zt1,     -theta),
+        (-a/2, b/2,  zp-zt1,  -theta),
+        (a/2,  -b/2, zt1-zp,  -theta),
+        (-a/2, -b/2, -zt1,    -theta),
+        (0.0,  b,    zp,       theta),
+        (0.0,  -b,   -zp,      theta),
+    ]
+    parts = [c0] + [
+        place_in_layer(mol_l.coords, ta, tb, tc, A2, a3) for ta, tb, tc, a3 in configs
+    ]
+    symbols = list(mol_l.symbols) * 7
+    return symbols, np.vstack(parts)
 
 
 def monomer_csv(mol: Molecule) -> str:

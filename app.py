@@ -39,7 +39,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from csp.structure.molecule import load_molecule, _VDW  # noqa: E402
-from csp.structure.intralayer import cluster9, monomer_csv  # noqa: E402
+from csp.structure.intralayer import cluster9, cluster6_inclined, dimer, monomer_csv  # noqa: E402
 from csp.vdw.contact import step1a_scan  # noqa: E402
 from csp.vdw.interlayer import interlayer_vdw_scan, bilayer_preview  # noqa: E402
 from csp.plot.viewer3d import to_xyz_string, render_3d_html  # noqa: E402
@@ -47,6 +47,7 @@ from csp.plot.map2d import build_heatmap_figure  # noqa: E402
 from csp.plot.step1_results import (  # noqa: E402
     classify_and_fold_step1_results, KIND_LABEL as _S1R_KIND_LABEL, KIND_COLOR as _S1R_KIND_COLOR,
 )
+from csp.plot.step2_results import build_theta_phi_map  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 MOLECULE_DIR = ROOT / "data" / "molecules"
@@ -799,21 +800,147 @@ with tab_step2:
             cols_lower = {c.lower(): c for c in df.columns}
             if {"z", "et", "ep"} <= set(cols_lower):
                 zc, etc, epc = cols_lower["z"], cols_lower["et"], cols_lower["ep"]
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=df[zc], y=df[etc], mode="lines+markers", name="E_t (T-shaped)"))
-                fig.add_trace(go.Scatter(x=df[zc], y=df[epc], mode="lines+markers", name="E_p (slipped parallel)"))
-                fig.add_trace(go.Scatter(
-                    x=df[zc], y=4 * df[etc] + 2 * df[epc],
-                    mode="lines", name="4·E_t + 2·E_p", line=dict(dash="dash"),
-                ))
-                fig.update_layout(
-                    xaxis_title="z shift along long axis (Å)",
-                    yaxis_title="E (kcal/mol)",
-                    margin=dict(l=20, r=20, t=30, b=20),
+                st.caption(
+                    "Et(z) and Ep(z) are independent dimer scans (T-shaped "
+                    "neighbor at (a/2, b/2, z); slipped-parallel neighbor at "
+                    "(0, b, z)). Note there's no single '4·Et+2·Ep' curve to "
+                    "show here in general -- that combination only holds for "
+                    "the glide-symmetric G-form (same z on every contact); "
+                    "the Fig. 5(b)-style map below combines Et/Ep at "
+                    "*independent* z per contact to cover the N-form too."
                 )
-                st.plotly_chart(fig, width="stretch")
-                with st.expander("Data table"):
-                    st.dataframe(df, width="stretch")
+                _s2_default = (
+                    st.session_state.get("s1fig2b_current")
+                    or st.session_state.get("s1vdw_current") or {}
+                )
+                c1, c2, c3 = st.columns(3)
+                s2_a = c1.number_input("a (Å)", value=float(_s2_default.get("a", 7.2)), key="s2_a")
+                s2_b = c2.number_input("b (Å)", value=float(_s2_default.get("b", 6.0)), key="s2_b")
+                s2_theta = c3.number_input(
+                    "theta (deg, from Step 1)",
+                    value=float(_s2_default.get("alpha", _s2_default.get("theta", 22.0))),
+                    key="s2_theta",
+                )
+
+                col_s2plot, col_s2_3d = st.columns([2, 1])
+                with col_s2plot:
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df[zc], y=df[etc], mode="lines+markers", name="E_t (T-shaped)",
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=df[zc], y=df[epc], mode="lines+markers", name="E_p (slipped parallel)",
+                    ))
+                    fig.update_layout(
+                        xaxis_title="z shift along long axis (Å)",
+                        yaxis_title="E (kcal/mol)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                    )
+                    event_s2 = st.plotly_chart(
+                        fig, width="stretch", on_select="rerun", key="s2_chart"
+                    )
+                    pts_s2 = event_s2.selection.points if (event_s2 and event_s2.selection) else []
+                    if pts_s2:
+                        p0 = pts_s2[0]
+                        z_sel = p0.get("x")
+                        curve_num = p0.get("curve_number", 0)
+                        if z_sel is not None:
+                            # step2_para.py's own rule: SP contact runs along
+                            # whichever of a/b is the *shorter* axis (along b
+                            # when a>b, else along a).
+                            kind = "t" if curve_num == 0 else ("p1" if s2_a > s2_b else "p2")
+                            st.session_state["s2_current"] = {
+                                "kind": kind, "z": float(z_sel),
+                                "label": f"clicked {'E_t' if kind == 't' else 'E_p'}: z={z_sel}",
+                            }
+                    with st.expander("Data table"):
+                        st.dataframe(df, width="stretch")
+                with col_s2_3d:
+                    st.markdown("**Structure preview**")
+                    if mol2 is None:
+                        st.caption("Select a molecule in Tab 1.")
+                    else:
+                        current_s2 = st.session_state.get("s2_current") or {
+                            "kind": "t", "z": 0.0, "label": "default: E_t at z=0",
+                        }
+                        st.caption(current_s2["label"])
+                        c_i, c_j = dimer(
+                            mol2, current_s2["kind"], s2_a, s2_b, s2_theta, z=current_s2["z"],
+                        )
+                        syms_s2 = list(mol2.symbols) * 2
+                        render_molecule_3d(
+                            syms_s2,
+                            np.vstack([c_i, c_j]),
+                            f"{mol2.name} dimer {current_s2['kind']} z={current_s2['z']}",
+                            key_suffix="s2dimer", style_key="s2dimer_style",
+                        )
+
+                st.divider()
+                st.subheader("Fig. 5(b)-style: theta_incl / phi_incl map (Eintra(6))")
+                st.caption(
+                    "Reconstructed by combining Et(z)/Ep(z) at independently "
+                    "chosen z per contact (zt for the T-neighbor at (a/2, b/2), "
+                    "zp for the slipped-parallel neighbor at (0, b)): "
+                    "Eintra(6) = 2·(Et(zt) + Et(zt−zp) + Ep(zp)). No new DFT "
+                    "needed. zp=0 is the glide-symmetric G-form direction "
+                    "(matches the plain Et/Ep scan above); zt != zp/2 breaks "
+                    "glide symmetry (N-form). Click a point for its 6-molecule "
+                    "structure."
+                )
+                df_map = build_theta_phi_map(df.rename(columns={zc: "z", etc: "Et", epc: "Ep"}), s2_a, s2_b)
+                if len(df_map) == 0:
+                    st.warning("Not enough z-range overlap to build this map.")
+                else:
+                    col_map, col_map3d = st.columns([2, 1])
+                    with col_map:
+                        n_side = max(1, int(round(len(df_map) ** 0.5)))
+                        marker_px = max(3, 650 / n_side)
+                        fig5b = go.Figure()
+                        fig5b.add_trace(go.Scatter(
+                            x=df_map["phi_incl"], y=df_map["theta_incl"], mode="markers",
+                            marker=dict(
+                                symbol="square", size=marker_px,
+                                color=df_map["E"], colorscale="RdBu_r",
+                                colorbar=dict(title="E_intra(6)"),
+                            ),
+                            showlegend=False,
+                            customdata=np.stack([df_map["zt"], df_map["zp"]], axis=-1),
+                            hovertemplate="phi=%{x:.1f}<br>theta=%{y:.1f}<br>E=%{marker.color:.2f}<extra></extra>",
+                        ))
+                        fig5b.update_layout(
+                            xaxis_title="phi_incl (deg)", yaxis_title="theta_incl (deg)",
+                            margin=dict(l=20, r=20, t=30, b=20),
+                        )
+                        event_5b = st.plotly_chart(
+                            fig5b, width="stretch", on_select="rerun", key="s2fig5b_chart"
+                        )
+                        pts_5b = event_5b.selection.points if (event_5b and event_5b.selection) else []
+                        if pts_5b:
+                            cd = pts_5b[0].get("customdata")
+                            if isinstance(cd, (list, tuple, np.ndarray)) and len(cd) >= 2:
+                                st.session_state["s2fig5b_current"] = {
+                                    "zt": float(cd[0]), "zp": float(cd[1]),
+                                    "label": f"clicked: zt={cd[0]} zp={cd[1]}",
+                                }
+                        with st.expander("Map data table"):
+                            st.dataframe(df_map, width="stretch")
+                    with col_map3d:
+                        st.markdown("**Structure preview**")
+                        if mol2 is None:
+                            st.caption("Select a molecule in Tab 1.")
+                        else:
+                            current_5b = st.session_state.get("s2fig5b_current") or {
+                                "zt": 0.0, "zp": 0.0, "label": "default: zt=0 zp=0 (flat R-form)",
+                            }
+                            st.caption(current_5b["label"])
+                            syms6, coords6 = cluster6_inclined(
+                                mol2, s2_a, s2_b, s2_theta, current_5b["zt"], current_5b["zp"],
+                            )
+                            render_molecule_3d(
+                                syms6, coords6,
+                                f"{mol2.name} cluster6 zt={current_5b['zt']} zp={current_5b['zp']}",
+                                key_suffix="s2fig5b", style_key="s2fig5b_style",
+                            )
             else:
                 line_plot_section(
                     df, "s2_plot",
