@@ -977,14 +977,12 @@ with tab_step2:
                                 colorbar=dict(title="E_intra(6)"),
                             ),
                             showlegend=False,
-                            customdata=np.stack([df_map["zt"], df_map["zp"]], axis=-1),
                             hovertemplate="x=%{x:.1f}<br>y=%{y:.1f}<br>E=%{marker.color:.2f}<extra></extra>",
                         ))
                         fig5b.add_trace(go.Scatter(
                             x=min_rows["x"], y=min_rows["y"], mode="markers",
                             name="local min", showlegend=False,
                             marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
-                            customdata=np.stack([min_rows["zt"], min_rows["zp"]], axis=-1),
                             hovertemplate="x=%{x:.1f}<br>y=%{y:.1f}<extra>local min</extra>",
                         ))
                         fig5b.update_layout(
@@ -1004,12 +1002,22 @@ with tab_step2:
                         )
                         pts_5b = event_5b.selection.points if (event_5b and event_5b.selection) else []
                         if pts_5b:
-                            cd = pts_5b[0].get("customdata")
-                            if isinstance(cd, (list, tuple, np.ndarray)) and len(cd) >= 2:
-                                st.session_state["s2fig5b_current"] = {
-                                    "zt": float(cd[0]), "zp": float(cd[1]),
-                                    "label": f"clicked: zt={cd[0]} zp={cd[1]}",
-                                }
+                            # customdata proved unreliable for click
+                            # identification elsewhere in this app (Tab 4's
+                            # vdW map) -- match the point's plain x/y back to
+                            # df_map's own x/y columns instead, which is the
+                            # pattern that's actually held up everywhere else.
+                            x_sel, y_sel = pts_5b[0].get("x"), pts_5b[0].get("y")
+                            if x_sel is not None and y_sel is not None:
+                                match5b = df_map[
+                                    np.isclose(df_map["x"], x_sel) & np.isclose(df_map["y"], y_sel)
+                                ]
+                                if len(match5b):
+                                    r5b = match5b.iloc[0]
+                                    st.session_state["s2fig5b_current"] = {
+                                        "zt": float(r5b["zt"]), "zp": float(r5b["zp"]),
+                                        "label": f"clicked: zt={r5b['zt']} zp={r5b['zp']}",
+                                    }
                         st.caption(f"{len(min_rows)} local minima marked (black squares) out of {len(df_map)} grid points.")
                         with st.expander("Map data table"):
                             st.dataframe(df_map, width="stretch")
@@ -1128,14 +1136,12 @@ with tab_step2:
                         marker=dict(symbol="square", size=marker_px_t, color=df_conv[ec],
                                     colorscale="RdBu_r", colorbar=dict(title="E_intra(6)")),
                         showlegend=False,
-                        customdata=np.arange(len(df_conv)),
                         hovertemplate="A2=%{x}<br>Rt=%{y}<br>E=%{marker.color:.2f}<extra></extra>",
                     ))
                     figT.add_trace(go.Scatter(
                         x=df_conv.loc[min_mask_t, a2c], y=df_conv.loc[min_mask_t, rtc], mode="markers",
                         showlegend=False,
                         marker=dict(symbol="square-open", size=marker_px_t + 6, color="black", line=dict(width=2)),
-                        customdata=np.arange(len(df_conv))[min_mask_t],
                         hovertemplate="A2=%{x}<br>Rt=%{y}<extra>local min</extra>",
                     ))
                     figT.update_layout(
@@ -1145,9 +1151,18 @@ with tab_step2:
                     event_t = st.plotly_chart(figT, width="stretch", on_select="rerun", key="s4a_chart")
                     pts_t = event_t.selection.points if (event_t and event_t.selection) else []
                     if pts_t:
-                        cd = pts_t[0].get("customdata")
-                        if cd is not None:
-                            r = df_conv.iloc[int(cd)]
+                        # Match plain x/y back to df_conv's own columns
+                        # instead of relying on customdata (unreliable for
+                        # click identification elsewhere in this app).
+                        x_sel_t, y_sel_t = pts_t[0].get("x"), pts_t[0].get("y")
+                        if x_sel_t is not None and y_sel_t is not None:
+                            match_t = df_conv[
+                                np.isclose(df_conv[a2c], x_sel_t) & np.isclose(df_conv[rtc], y_sel_t)
+                            ]
+                        else:
+                            match_t = df_conv.iloc[0:0]
+                        if len(match_t):
+                            r = match_t.iloc[0]
                             st.session_state["s4a_current"] = {
                                 "a2": float(r[a2c]), "rt": float(r[rtc]),
                                 "a": float(r[ac]) if ac else _twist_a, "b": float(r[bc]) if bc else _twist_b,
