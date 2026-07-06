@@ -44,6 +44,9 @@ from csp.vdw.contact import step1a_scan  # noqa: E402
 from csp.vdw.interlayer import interlayer_vdw_scan, bilayer_preview  # noqa: E402
 from csp.plot.viewer3d import to_xyz_string, render_3d_html  # noqa: E402
 from csp.plot.map2d import build_heatmap_figure  # noqa: E402
+from csp.plot.step1_results import (  # noqa: E402
+    classify_and_fold_step1_results, KIND_LABEL as _S1R_KIND_LABEL, KIND_COLOR as _S1R_KIND_COLOR,
+)
 
 ROOT = Path(__file__).resolve().parent
 MOLECULE_DIR = ROOT / "data" / "molecules"
@@ -660,6 +663,93 @@ with tab_step1:
             "hill-climb history at each alpha is the optimized E_intra(8); "
             "its global minimum identifies the R-form (alpha ≈ 25°)."
         )
+
+        st.divider()
+        st.subheader("Fig. 2(b)-style: branch-classified E_intra(8) vs alpha")
+        if mol2 is None:
+            st.info("Select a molecule in Tab 1 first (needed to re-derive the "
+                     "a-stack/b-stack/local-min branches and the 3D preview).")
+        else:
+            st.caption(
+                "step1.csv alone doesn't record which of the 2-3 seeds per "
+                "alpha (a-stack / b-stack / local min, same vdW rough-scan as "
+                "the pre-scan above) each hill-climb point belongs to, or "
+                "where each seed's climb converged. Both are reconstructed "
+                "here: the seeds come from re-running the vdW scan, and each "
+                "seed's convergence point is found by replaying the same "
+                "greedy neighbor-descent step1.py used, against step1.csv's "
+                "already-computed energies (no new DFT). Polyacenes are also "
+                "exactly symmetric under alpha -> 90-alpha with a/b swapped "
+                "(same physical structure, axes relabeled), so a scan run "
+                "only up to alpha=45 is reflected to cover the full range, "
+                "matching the paper's Fig. 2(b). Click a point for its "
+                "9-molecule structure."
+            )
+            thetas = sorted(df["theta"].dropna().unique().tolist()) if "theta" in df.columns else []
+            thetas = [t for t in thetas if t <= 45.0 + 1e-6]
+            if not thetas:
+                st.warning("No alpha <= 45 rows found in this CSV to classify.")
+            else:
+                df_branches = classify_and_fold_step1_results(
+                    mol2, thetas, df, radii_overrides=st.session_state.get("vdw_radii_overrides")
+                )
+                col_fig2b, col_3d_fig2b = st.columns([2, 1])
+                with col_fig2b:
+                    fig2b = go.Figure()
+                    for kind, grp in df_branches.groupby("kind"):
+                        grp = grp.sort_values("theta")
+                        color = _S1R_KIND_COLOR.get(kind, "gray")
+                        fig2b.add_trace(go.Scatter(
+                            x=grp["theta"], y=grp["E"], mode="lines+markers",
+                            name=_S1R_KIND_LABEL.get(kind, kind),
+                            line=dict(color=color), marker=dict(size=8, color=color),
+                            hovertemplate="alpha=%{x}<br>E=%{y:.2f}<extra>"
+                                          + _S1R_KIND_LABEL.get(kind, kind) + "</extra>",
+                        ))
+                    fig2b.update_layout(
+                        xaxis_title="alpha (deg)", yaxis_title="E_intra(8) (kcal/mol)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                    )
+                    event_2b = st.plotly_chart(
+                        fig2b, width="stretch", on_select="rerun", key="s1fig2b_chart"
+                    )
+                    pts_2b = event_2b.selection.points if (event_2b and event_2b.selection) else []
+                    if pts_2b:
+                        p0 = pts_2b[0]
+                        theta_sel, E_sel = p0.get("x"), p0.get("y")
+                        if theta_sel is not None and E_sel is not None:
+                            match = df_branches[
+                                np.isclose(df_branches["theta"], theta_sel)
+                                & np.isclose(df_branches["E"], E_sel)
+                            ]
+                            if len(match):
+                                r = match.iloc[0]
+                                st.session_state["s1fig2b_current"] = {
+                                    "alpha": float(r["theta"]), "a": float(r["a"]), "b": float(r["b"]),
+                                    "label": f"clicked [{_S1R_KIND_LABEL.get(r['kind'], r['kind'])}]: "
+                                             f"alpha={r['theta']} a={r['a']} b={r['b']} E={r['E']:.2f}",
+                                }
+                    with st.expander("Branches table"):
+                        st.dataframe(df_branches, width="stretch")
+                with col_3d_fig2b:
+                    st.markdown("**Structure preview**")
+                    current_2b = st.session_state.get("s1fig2b_current")
+                    if current_2b is None and len(df_branches):
+                        best = df_branches.loc[df_branches["E"].idxmin()]
+                        current_2b = {
+                            "alpha": float(best["theta"]), "a": float(best["a"]), "b": float(best["b"]),
+                            "label": f"default (min E) [{_S1R_KIND_LABEL.get(best['kind'], best['kind'])}]: "
+                                     f"alpha={best['theta']} a={best['a']} b={best['b']}",
+                        }
+                    if current_2b is not None:
+                        st.caption(current_2b["label"])
+                        syms_2b, coords_2b = cluster9(mol2, current_2b["a"], current_2b["b"], current_2b["alpha"])
+                        render_molecule_3d(
+                            syms_2b, coords_2b,
+                            f"{mol2.name} cluster9 alpha={current_2b['alpha']} "
+                            f"a={current_2b['a']} b={current_2b['b']}",
+                            key_suffix="s1fig2b", style_key="s1fig2b_style",
+                        )
 
 
 # ══════════════════════════════════════════════════════════
