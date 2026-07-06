@@ -22,7 +22,9 @@
 | 4a/4b | ねじれ・不均一傾斜精密化 | DFT-D → E_int(near) 最小化 |
 | 5 | Transfer integral | Gaussian16: B3LYP/6-31G*, 松井先生コード |
 
-**使わないもの**: Amber力場、遠距離相互作用外挿（G1〜G5）
+**使わないもの**: Amber力場、遠距離相互作用外挿（G1〜G5、`legacy/ono_scripts/tot_energy/`）、
+粉末XRD比較（`legacy/ono_scripts/XRD_pattern/`、2026-07-06三好さん暫定決定）。
+いずれもcsp本体には統合せず、README等での紹介に留める。
 
 ## 主要変数（論文の11変数）
 
