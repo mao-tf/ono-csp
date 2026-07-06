@@ -93,7 +93,7 @@ def end_process(args):
         log_filepath_2 = os.path.join(*[auto_dir,'gaussian',file_name_2])
         E_list1=get_E(log_filepath_1)##t
         E_list2=get_E(log_filepath_2)##p
-        if len(E_list1)==41 & len(E_list2)==41:
+        if len(E_list1)==41 and len(E_list2)==41:
             break
         time.sleep(60)
     E_list_1=[]
@@ -107,7 +107,7 @@ def end_process(args):
     z_list=[np.round(z,1) for z in np.linspace(-np.round(4,1),np.round(4,1),int(np.round(np.round(8,1)/0.1))+1)]
     para_list=[]
     for E1,E2,z in zip (E_list_1,E_list_2,z_list):
-        para_list.append(z,E1,E2)
+        para_list.append((z,E1,E2))
     df=pd.DataFrame(para_list,columns=['z','Et','Ep'])
     result_params_csv=os.path.join(auto_dir, 'step2_para.csv')
     df.to_csv(result_params_csv,index=False)
