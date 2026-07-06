@@ -467,15 +467,33 @@ with tab_step1:
                     "there ↔ endpoint/local-min category here). Click a point "
                     "to preview its 9-molecule structure."
                 )
-                figA = go.Figure()
+                fold_vdw = st.checkbox(
+                    "Reflect alpha -> 90-alpha (a/b swapped) to show the full "
+                    "0-90° range", value=True, key="s1vdw_fold",
+                )
+                df_init_plot = df_init
+                env = None
                 if df_curves is not None:
                     env = df_curves[df_curves["valid"]].groupby("alpha", as_index=False)["S"].min()
+                _KIND_SWAP_VDW = {"b_contact": "a_contact", "a_contact": "b_contact", "local_min": "local_min"}
+                if fold_vdw and "kind" in df_init.columns:
+                    folded = df_init.copy()
+                    folded["theta"] = 90.0 - folded["theta"]
+                    folded["a"], folded["b"] = df_init["b"].values, df_init["a"].values
+                    folded["kind"] = folded["kind"].map(_KIND_SWAP_VDW)
+                    df_init_plot = pd.concat([df_init, folded], ignore_index=True).reset_index(drop=True)
+                    if env is not None:
+                        env_folded = env.copy()
+                        env_folded["alpha"] = 90.0 - env_folded["alpha"]
+                        env = pd.concat([env, env_folded], ignore_index=True).sort_values("alpha")
+                figA = go.Figure()
+                if env is not None:
                     figA.add_trace(go.Scatter(
                         x=env["alpha"], y=env["S"], mode="lines",
                         name="min S (feasible)", line=dict(color="lightgray"),
                         hoverinfo="skip",
                     ))
-                for kind, grp in (df_init.groupby("kind") if "kind" in df_init.columns else []):
+                for kind, grp in (df_init_plot.groupby("kind") if "kind" in df_init_plot.columns else []):
                     grp = grp.sort_values("theta")
                     color = _KIND_COLOR.get(kind, "gray")
                     figA.add_trace(go.Scatter(
@@ -505,7 +523,7 @@ with tab_step1:
                 if pts and pts[0].get("customdata") is not None:
                     idx = int(pts[0]["customdata"])
                     if st.session_state.get("s1vdw_figA_prev") != idx:
-                        row = df_init.loc[idx]
+                        row = df_init_plot.loc[idx]
                         st.session_state["s1vdw_current"] = {
                             "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
                             "label": f"Fig.2b click: alpha={row['theta']} a={row['a']} b={row['b']}",
@@ -822,12 +840,17 @@ with tab_step2:
                     st.session_state.get("s1fig2b_current")
                     or st.session_state.get("s1vdw_current") or {}
                 )
+                # Fallback defaults (when Tab 2 hasn't been used this session):
+                # pentacene's Type II parameters from the paper's SI Table S2
+                # (a=7.2, b=5.9, alpha=25 deg, theta_incl=27, phi_incl=48) --
+                # a physically real point instead of an arbitrary placeholder,
+                # so the sample 3D previews/maps show something meaningful.
                 c1, c2, c3 = st.columns(3)
                 s2_a = c1.number_input("a (Å)", value=float(_s2_default.get("a", 7.2)), key="s2_a")
-                s2_b = c2.number_input("b (Å)", value=float(_s2_default.get("b", 6.0)), key="s2_b")
+                s2_b = c2.number_input("b (Å)", value=float(_s2_default.get("b", 5.9)), key="s2_b")
                 s2_theta = c3.number_input(
                     "theta (deg, from Step 1)",
-                    value=float(_s2_default.get("alpha", _s2_default.get("theta", 22.0))),
+                    value=float(_s2_default.get("alpha", _s2_default.get("theta", 25.0))),
                     key="s2_theta",
                 )
 
@@ -904,6 +927,25 @@ with tab_step2:
                     with col_map:
                         n_side = max(1, int(round(len(df_map) ** 0.5)))
                         marker_px = max(3, 650 / n_side)
+                        # R/G/N-form local minima aren't necessarily the
+                        # global minimum (the paper shows them as separate
+                        # local minima on this same landscape) -- a plain
+                        # color scale washes them out against the flat
+                        # R-form's much deeper global minimum, so find and
+                        # mark them explicitly (same approach as Tab 4's vdW
+                        # map: 2D minimum_filter over the (zt, zp) grid).
+                        from scipy.ndimage import minimum_filter
+                        pivot_map = df_map.pivot(index="zp", columns="zt", values="E")
+                        grid = pivot_map.values
+                        is_min = (grid == minimum_filter(grid, size=5)) & np.isfinite(grid)
+                        min_i, min_j = np.where(is_min)
+                        min_zp = pivot_map.index.to_numpy()[min_i]
+                        min_zt = pivot_map.columns.to_numpy()[min_j]
+                        min_pairs = set(zip(min_zt, min_zp))
+                        min_mask = [
+                            (zt, zp) in min_pairs for zt, zp in zip(df_map["zt"], df_map["zp"])
+                        ]
+                        min_rows = df_map[min_mask]
                         fig5b = go.Figure()
                         fig5b.add_trace(go.Scatter(
                             x=df_map["phi_incl"], y=df_map["theta_incl"], mode="markers",
@@ -915,6 +957,13 @@ with tab_step2:
                             showlegend=False,
                             customdata=np.stack([df_map["zt"], df_map["zp"]], axis=-1),
                             hovertemplate="phi=%{x:.1f}<br>theta=%{y:.1f}<br>E=%{marker.color:.2f}<extra></extra>",
+                        ))
+                        fig5b.add_trace(go.Scatter(
+                            x=min_rows["phi_incl"], y=min_rows["theta_incl"], mode="markers",
+                            name="local min", showlegend=False,
+                            marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
+                            customdata=np.stack([min_rows["zt"], min_rows["zp"]], axis=-1),
+                            hovertemplate="phi=%{x:.1f}<br>theta=%{y:.1f}<extra>local min</extra>",
                         ))
                         fig5b.update_layout(
                             xaxis_title="phi_incl (deg)", yaxis_title="theta_incl (deg)",
@@ -931,8 +980,14 @@ with tab_step2:
                                     "zt": float(cd[0]), "zp": float(cd[1]),
                                     "label": f"clicked: zt={cd[0]} zp={cd[1]}",
                                 }
+                        st.caption(f"{len(min_rows)} local minima marked (black squares) out of {len(df_map)} grid points.")
                         with st.expander("Map data table"):
                             st.dataframe(df_map, width="stretch")
+                        with st.expander("Local minima table"):
+                            st.dataframe(
+                                min_rows[["zt", "zp", "theta_incl", "phi_incl", "E"]].sort_values("E"),
+                                width="stretch",
+                            )
                     with col_map3d:
                         st.markdown("**Structure preview**")
                         if mol2 is None:
@@ -1022,9 +1077,13 @@ with tab_step3:
         )
         mol3 = st.session_state.get("molecule")
         s1_current = st.session_state.get("s1vdw_current") or {}
+        # Fallback defaults: pentacene's R-form (Type I) parameters from the
+        # paper's SI Table S2 (a=7.2, b=6.0, alpha=25 deg), used when Tab 2
+        # hasn't been run this session -- a real point instead of a made-up
+        # placeholder.
         c1, c2, c3 = st.columns(3)
-        s3_a = c1.number_input("a (Å)", value=float(s1_current.get("a", 6.0)), key="s3vdw_a")
-        s3_b = c2.number_input("b (Å)", value=float(s1_current.get("b", 7.0)), key="s3vdw_b")
+        s3_a = c1.number_input("a (Å)", value=float(s1_current.get("a", 7.2)), key="s3vdw_a")
+        s3_b = c2.number_input("b (Å)", value=float(s1_current.get("b", 6.0)), key="s3vdw_b")
         s3_theta = c3.number_input(
             "theta (deg, from Step 1)", value=float(s1_current.get("alpha", 25.0)), key="s3vdw_theta"
         )
