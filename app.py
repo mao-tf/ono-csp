@@ -1042,6 +1042,17 @@ with tab_step2:
                 )
 
     with sub_twist:
+        # Independent fallback defaults (don't rely on sub_para's s2_a/s2_b/
+        # s2_theta -- those are only defined when step2_para.csv is loaded
+        # there, which isn't guaranteed if this sub-tab is opened first).
+        _twist_default = (
+            st.session_state.get("s1fig2b_current")
+            or st.session_state.get("s1vdw_current") or {}
+        )
+        _twist_a = float(_twist_default.get("a", 6.6))
+        _twist_b = float(_twist_default.get("b", 6.7))
+        _twist_theta = float(_twist_default.get("alpha", _twist_default.get("theta", 21.0)))
+
         st.subheader("How to run (CLI)")
         cli_howto(
             what=(
@@ -1071,21 +1082,106 @@ with tab_step2:
             ),
         )
         st.divider()
-        st.subheader("Results  (step2_twist.csv)")
+        st.subheader("Fig. 7(c)-style: Eintra(6) vs theta_twist / Rt (ΔzT)")
         df, src = load_results_csv("s4a_results", "step2_twist.csv")
         if df is not None:
             source_badge(src)
-            line_plot_section(
-                df, "s4a_plot",
-                x_candidates=["a2", "rt"],
-                y_candidates=["e"],
-                agg_min=True,
-            )
             st.caption(
                 "Expected: E minimum at a twist of ≈ 13° for naphthalene, "
                 "≈ 9° for anthracene; no gain for tetracene and longer "
-                "(paper §2.4)."
+                "(paper §2.4). At each (A2, Rt), (a, b) were themselves "
+                "hill-climbed -- the map below takes the converged (minimum) "
+                "E at each grid point. Click a point for its T-shaped "
+                "dimer at that twist/shift."
             )
+            cols_lower_t = {c.lower(): c for c in df.columns}
+            need = {"a2", "rt", "e"}
+            if not need <= set(cols_lower_t):
+                st.warning(f"Expected columns A2, Rt, E (got {list(df.columns)}); "
+                           "showing a generic plot instead.")
+                line_plot_section(df, "s4a_plot", x_candidates=["a2", "rt"], y_candidates=["e"])
+            else:
+                a2c, rtc, ec = cols_lower_t["a2"], cols_lower_t["rt"], cols_lower_t["e"]
+                ac = cols_lower_t.get("a")
+                bc = cols_lower_t.get("b")
+                thc = cols_lower_t.get("theta")
+                df_conv = df.loc[df.groupby([a2c, rtc])[ec].idxmin()].reset_index(drop=True)
+                col_twist, col_twist3d = st.columns([2, 1])
+                with col_twist:
+                    n_side_t = max(1, int(round(len(df_conv) ** 0.5)))
+                    marker_px_t = max(4, 500 / n_side_t)
+                    pivot_t = df_conv.pivot(index=rtc, columns=a2c, values=ec)
+                    grid_t = pivot_t.values
+                    if grid_t.shape[0] >= 5 and grid_t.shape[1] >= 5:
+                        from scipy.ndimage import minimum_filter
+                        is_min_t = (grid_t == minimum_filter(grid_t, size=5)) & np.isfinite(grid_t)
+                    else:
+                        is_min_t = grid_t == np.nanmin(grid_t)
+                    mi, mj = np.where(is_min_t)
+                    min_rt = pivot_t.index.to_numpy()[mi]
+                    min_a2 = pivot_t.columns.to_numpy()[mj]
+                    min_pairs_t = set(zip(min_a2, min_rt))
+                    min_mask_t = [(a2v, rtv) in min_pairs_t for a2v, rtv in zip(df_conv[a2c], df_conv[rtc])]
+                    figT = go.Figure()
+                    figT.add_trace(go.Scatter(
+                        x=df_conv[a2c], y=df_conv[rtc], mode="markers",
+                        marker=dict(symbol="square", size=marker_px_t, color=df_conv[ec],
+                                    colorscale="RdBu_r", colorbar=dict(title="E_intra(6)")),
+                        showlegend=False,
+                        customdata=np.arange(len(df_conv)),
+                        hovertemplate="A2=%{x}<br>Rt=%{y}<br>E=%{marker.color:.2f}<extra></extra>",
+                    ))
+                    figT.add_trace(go.Scatter(
+                        x=df_conv.loc[min_mask_t, a2c], y=df_conv.loc[min_mask_t, rtc], mode="markers",
+                        showlegend=False,
+                        marker=dict(symbol="square-open", size=marker_px_t + 6, color="black", line=dict(width=2)),
+                        customdata=np.arange(len(df_conv))[min_mask_t],
+                        hovertemplate="A2=%{x}<br>Rt=%{y}<extra>local min</extra>",
+                    ))
+                    figT.update_layout(
+                        xaxis_title="theta_twist / A2 (deg)", yaxis_title="Rt / ΔzT (Å)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                    )
+                    event_t = st.plotly_chart(figT, width="stretch", on_select="rerun", key="s4a_chart")
+                    pts_t = event_t.selection.points if (event_t and event_t.selection) else []
+                    if pts_t:
+                        cd = pts_t[0].get("customdata")
+                        if cd is not None:
+                            r = df_conv.iloc[int(cd)]
+                            st.session_state["s4a_current"] = {
+                                "a2": float(r[a2c]), "rt": float(r[rtc]),
+                                "a": float(r[ac]) if ac else _twist_a, "b": float(r[bc]) if bc else _twist_b,
+                                "theta": float(r[thc]) if thc else _twist_theta,
+                                "label": f"clicked: A2={r[a2c]} Rt={r[rtc]} E={r[ec]:.2f}",
+                            }
+                    st.caption(f"{sum(min_mask_t)} local minima marked (black squares) out of {len(df_conv)} grid points.")
+                    with st.expander("Converged (a,b) at each (A2,Rt) grid point"):
+                        st.dataframe(df_conv, width="stretch")
+                with col_twist3d:
+                    st.markdown("**Structure preview**")
+                    if mol2 is None:
+                        st.caption("Select a molecule in Tab 1.")
+                    else:
+                        current_t = st.session_state.get("s4a_current")
+                        if current_t is None and len(df_conv):
+                            best_t = df_conv.loc[df_conv[ec].idxmin()]
+                            current_t = {
+                                "a2": float(best_t[a2c]), "rt": float(best_t[rtc]),
+                                "a": float(best_t[ac]) if ac else _twist_a, "b": float(best_t[bc]) if bc else _twist_b,
+                                "theta": float(best_t[thc]) if thc else _twist_theta,
+                                "label": f"default (min E): A2={best_t[a2c]} Rt={best_t[rtc]}",
+                            }
+                            st.session_state["s4a_current"] = current_t
+                        st.caption(current_t["label"])
+                        c_i_t, c_j_t = dimer(
+                            mol2, "t", current_t["a"], current_t["b"], current_t["theta"],
+                            A2=current_t["a2"], z=current_t["rt"],
+                        )
+                        render_molecule_3d(
+                            list(mol2.symbols) * 2, np.vstack([c_i_t, c_j_t]),
+                            f"{mol2.name} twist dimer A2={current_t['a2']} Rt={current_t['rt']}",
+                            key_suffix="s4a", style_key="s4a_style",
+                        )
 
 
 # ══════════════════════════════════════════════════════════
