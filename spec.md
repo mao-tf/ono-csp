@@ -1030,6 +1030,12 @@ Eintra(6) = 2×(Et1 + Et2 + Ep)
 任意の`(kx,ky)`＝任意の`(θ_incl,φ_incl)`（N形の中間角度を含む）を、
 `step2_para.py`の1次元スキャン結果だけから再構成できる。
 
+**TODO（2026-07-06、三好さん指示）**: このN形2次元マップ（論文Fig.5b相当）の
+GUI実装をやった方がよい。Tab 3 paraで得られるEt(z)・Ep(z)の1次元スキャン結果
+（`step2_para.csv`）から、上記の組み合わせ計算で(θ_incl,φ_incl)平面上の
+Eintra(6)ヒートマップを再構成して表示する機能。Tab 4 paraのvdW事前スキャン
+機能と似た位置づけ（既存の計算結果を活用した可視化）。実装時期は未定。
+
 **格子定数 a, b は全過程で固定**（`step2_para.py`の`fixed_param_keys`にa,b,thetaが
 含まれ、Step1の最適値をそのまま使う設計であることからも確認済み）。
 - [x] ~~`step3_para_vdw.py`の`get_monomer_xyzR`呼び出しの引数過多バグ~~ → 2026-07-06 修正・動作確認済み
@@ -1050,6 +1056,10 @@ Eintra(6) = 2×(Et1 + Et2 + Ep)
 - [ ] CITATION.cff / .zenodo.json の追加（DOI 取得のタイミングで。著者: Mao Miyoshi, Ryota Ohno）
 - [ ] README の英語チュートリアル拡充（インストール〜Tab 2 スキャン〜CLI 実行の通し手順）
 - [ ] 論文 Methods への URL + DOI 記載（論文改訂時）
+
+**やった方がよい（2026-07-06、三好さん指示）**:
+- [ ] N形2次元マップ（θ_incl・φ_incl、論文Fig.5b相当）のGUI実装。
+      詳細は「N形2次元マップの再構成方法」セクション参照
 
 **任意（余裕があれば）**:
 - [ ] legacy スクリプトのハードコードパス（`~/path/to/monomer/` など）を引数化
