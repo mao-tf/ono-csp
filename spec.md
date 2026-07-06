@@ -953,12 +953,13 @@ stmol = ">=0.0.9"      # py3Dmol Streamlit 連携
 ## 残タスク / TODO（2026-07-05 時点）
 
 **後回し（保留中）**:
-- [ ] 論文図のサンプル結果 CSV を `example/pentacene/` に同梱。
-      **2026-07-06 大野さんがペンタセンの実結果を受領済み**:
-      `legacy/ono_scripts/result_csv/step1/pentacene/step1.csv`（2693行）、
-      `legacy/ono_scripts/result_csv/step2_para/pentacene/step2_para.csv`（82行）。
-      まだ`example/pentacene/`への配置・README更新は未着手
-      （配置方法は`example/pentacene/README.md`参照）
+- [x] ~~論文図のサンプル結果 CSV を `example/pentacene/` に同梱~~
+      → **2026-07-06 一部完了**。大野さんから受領したペンタセン実データ2本
+      （`step1.csv` 2692行、`step2_para.csv` 81行）を`example/pentacene/`に配置し、
+      GUI（Tab 2・Tab 3 para）で正しく読み込めることを確認済み。
+      残り5ファイル（`step1_init_params.csv`, `step2_twist.csv`, `step3_para.csv`,
+      `step3_twist.csv`, `transfer_integrals.csv`）は引き続き未受領
+      （`example/pentacene/README.md`に受領状況を一覧化済み）
 
 **受領・回答待ち（大野さん）**:
 - [x] ~~モノマー CSV の座標規約照合~~ → 2026-07-06 実CSV受領・数値比較して確認済み
@@ -1074,6 +1075,12 @@ Eintra(6)ヒートマップを再構成して表示する機能。Tab 4 paraのv
 - [ ] CITATION.cff / .zenodo.json の追加（DOI 取得のタイミングで。著者: Mao Miyoshi, Ryota Ohno）
 - [ ] README の英語チュートリアル拡充（インストール〜Tab 2 スキャン〜CLI 実行の通し手順）
 - [ ] 論文 Methods への URL + DOI 記載（論文改訂時）
+- [ ] **`paper_summary.txt`をgit履歴からも完全に削除**（2026-07-06 決定。現状は今後の
+      ツリーからのみ除外済み＝`git log`を遡れば初期コミットにまだ残っている。
+      論文が正式出版されて本格的にリポジトリを公開するタイミングで、`git filter-repo`等で
+      履歴ごと消してforce push。**事前に大野さんに連絡し、force push後は
+      彼にも再クローンしてもらう必要がある**（コミットハッシュが全部変わるため）。
+      DOI取得・CITATION.cff追加と同じタイミングでまとめてやるのが良い）
 
 **やった方がよい（2026-07-06、三好さん指示）**:
 - [ ] N形2次元マップ（θ_incl・φ_incl、論文Fig.5b相当）のGUI実装。
