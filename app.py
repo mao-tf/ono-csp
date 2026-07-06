@@ -429,10 +429,10 @@ with tab_step1:
         def _default_current(df: pd.DataFrame) -> Optional[dict]:
             if len(df) == 0:
                 return None
-            row = df.iloc[0]
+            row = df.loc[df["S"].idxmin()] if "S" in df.columns else df.iloc[0]
             return {
                 "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                "label": f"default: alpha={row['theta']} a={row['a']} b={row['b']}",
+                "label": f"default (min S): alpha={row['theta']} a={row['a']} b={row['b']}",
             }
 
         def _render_preview(df: pd.DataFrame, key_suffix: str) -> None:
@@ -440,7 +440,14 @@ with tab_step1:
             if mol2 is None:
                 st.caption("Select a molecule in Tab 1.")
                 return
-            current = st.session_state.get("s1vdw_current") or _default_current(df)
+            current = st.session_state.get("s1vdw_current")
+            if current is None:
+                current = _default_current(df)
+                if current is not None:
+                    # Same reasoning as the DFT Fig. 2(b) default: persist it
+                    # so Tab 3/Tab 4 inherit "the min-S candidate" instead of
+                    # an arbitrary placeholder before any click happens here.
+                    st.session_state["s1vdw_current"] = current
             if current is None:
                 st.caption("No candidates to preview.")
                 return
@@ -763,12 +770,27 @@ with tab_step1:
                     st.markdown("**Structure preview**")
                     current_2b = st.session_state.get("s1fig2b_current")
                     if current_2b is None and len(df_branches):
-                        best = df_branches.loc[df_branches["E"].idxmin()]
+                        # The global minimum is physically identical whether
+                        # shown via its original theta (<=45) or its folded
+                        # mirror (theta -> 90-theta, a/b swapped) -- prefer
+                        # the unfolded one so the displayed alpha matches the
+                        # commonly-cited value (e.g. ~25 deg) instead of its
+                        # (equally correct but less recognizable) >45 mirror.
+                        e_min = df_branches["E"].min()
+                        tied = df_branches[np.isclose(df_branches["E"], e_min)]
+                        unfolded_tied = tied[~tied["folded"]]
+                        best = (unfolded_tied if len(unfolded_tied) else tied).iloc[0]
                         current_2b = {
                             "alpha": float(best["theta"]), "a": float(best["a"]), "b": float(best["b"]),
                             "label": f"default (min E) [{_S1R_KIND_LABEL.get(best['kind'], best['kind'])}]: "
                                      f"alpha={best['theta']} a={best['a']} b={best['b']}",
                         }
+                        # Persist this so Tab 3/Tab 4's own a/b/theta defaults
+                        # pick up the actual R-form optimum immediately, even
+                        # before the user clicks a point here -- otherwise
+                        # they'd fall back to an arbitrary placeholder instead
+                        # of "whatever this tab is already showing".
+                        st.session_state["s1fig2b_current"] = current_2b
                     if current_2b is not None:
                         st.caption(current_2b["label"])
                         syms_2b, coords_2b = cluster9(mol2, current_2b["a"], current_2b["b"], current_2b["alpha"])
