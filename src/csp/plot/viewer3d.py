@@ -47,4 +47,12 @@ def render_3d_html(
         view.setStyle({"stick": {"radius": 0.15}, "sphere": {"radius": 0.3}})
     view.setProjection("orthographic")
     view.zoomTo()
-    return view._make_html()
+    inner_html = view._make_html()
+    # py3Dmol's canvas is a fixed width/height, but the embedding st.iframe
+    # (caller-side) stretches to the full column width -- without explicit
+    # centering the fixed-size canvas sits left-aligned in whatever wider
+    # (or narrower) space the column ends up being, instead of centered.
+    return (
+        '<div style="display:flex; justify-content:center; align-items:center; '
+        f'width:100%; height:{height}px;">{inner_html}</div>'
+    )
