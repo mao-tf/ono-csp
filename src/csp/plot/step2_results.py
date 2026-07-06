@@ -19,7 +19,16 @@ import pandas as pd
 
 def build_theta_phi_map(df_step2: pd.DataFrame, a: float, b: float) -> pd.DataFrame:
     """(theta_incl, phi_incl) Eintra(6) map from step2_para.csv (columns z,
-    Et, Ep). Returns columns zt, zp, theta_incl, phi_incl, E, Et1, Et2, Ep.
+    Et, Ep). Returns columns zt, zp, theta_incl, phi_incl, x, y, E, Et1, Et2,
+    Ep.
+
+    `x`/`y` are Ono's own plot2d() axes -- theta_incl as a radius and
+    phi_incl as the angle, in a polar-to-Cartesian transform
+    (x = theta_incl*cos(phi_incl), y = theta_incl*sin(phi_incl)), NOT plain
+    (phi_incl, theta_incl) axes. This is what actually reproduces the
+    paper's Fig. 5(b) layout (x in [-45, 45], y in [-30, 30]): the flat
+    R-form sits at the origin, and the radial distance from it is the
+    inclination magnitude in whatever direction phi_incl points.
     """
     z_vals = sorted(round(float(z), 1) for z in df_step2["z"])
     et_lookup = dict(zip((round(float(z), 1) for z in df_step2["z"]), df_step2["Et"]))
@@ -40,8 +49,10 @@ def build_theta_phi_map(df_step2: pd.DataFrame, a: float, b: float) -> pd.DataFr
             Z = 1.0 / math.sqrt(1.0 + (za / a) ** 2 + (zb / b) ** 2)
             theta_incl = math.degrees(math.acos(Z))
             phi_incl = math.degrees(cmath.phase(complex(za / a, zb / b)))
+            phi_rad = math.radians(phi_incl)
             rows.append({
                 "zt": zt, "zp": zp, "theta_incl": theta_incl, "phi_incl": phi_incl,
+                "x": theta_incl * math.cos(phi_rad), "y": theta_incl * math.sin(phi_rad),
                 "E": E, "Et1": Et1, "Et2": Et2, "Ep": Ep,
             })
     return pd.DataFrame(rows)

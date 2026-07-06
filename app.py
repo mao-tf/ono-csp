@@ -970,7 +970,7 @@ with tab_step2:
                         min_rows = df_map[min_mask]
                         fig5b = go.Figure()
                         fig5b.add_trace(go.Scatter(
-                            x=df_map["phi_incl"], y=df_map["theta_incl"], mode="markers",
+                            x=df_map["x"], y=df_map["y"], mode="markers",
                             marker=dict(
                                 symbol="square", size=marker_px,
                                 color=df_map["E"], colorscale="RdBu_r",
@@ -978,19 +978,27 @@ with tab_step2:
                             ),
                             showlegend=False,
                             customdata=np.stack([df_map["zt"], df_map["zp"]], axis=-1),
-                            hovertemplate="phi=%{x:.1f}<br>theta=%{y:.1f}<br>E=%{marker.color:.2f}<extra></extra>",
+                            hovertemplate="x=%{x:.1f}<br>y=%{y:.1f}<br>E=%{marker.color:.2f}<extra></extra>",
                         ))
                         fig5b.add_trace(go.Scatter(
-                            x=min_rows["phi_incl"], y=min_rows["theta_incl"], mode="markers",
+                            x=min_rows["x"], y=min_rows["y"], mode="markers",
                             name="local min", showlegend=False,
                             marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
                             customdata=np.stack([min_rows["zt"], min_rows["zp"]], axis=-1),
-                            hovertemplate="phi=%{x:.1f}<br>theta=%{y:.1f}<extra>local min</extra>",
+                            hovertemplate="x=%{x:.1f}<br>y=%{y:.1f}<extra>local min</extra>",
                         ))
                         fig5b.update_layout(
-                            xaxis_title="phi_incl (deg)", yaxis_title="theta_incl (deg)",
+                            # Ono's plot2d() axes: x = theta_incl*cos(phi_incl),
+                            # y = theta_incl*sin(phi_incl) (a polar->Cartesian
+                            # transform, radius=theta_incl, angle=phi_incl) --
+                            # matches the paper's Fig. 5(b) layout (x in
+                            # [-45,45], y in [-30,30]), unlike plain
+                            # (phi_incl, theta_incl) axes.
+                            xaxis_title="theta_incl · cos(phi_incl) (deg)",
+                            yaxis_title="theta_incl · sin(phi_incl) (deg)",
                             margin=dict(l=20, r=20, t=30, b=20),
                         )
+                        fig5b.update_yaxes(scaleanchor="x", scaleratio=1)
                         event_5b = st.plotly_chart(
                             fig5b, width="stretch", on_select="rerun", key="s2fig5b_chart"
                         )
