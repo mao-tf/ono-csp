@@ -97,6 +97,18 @@ looks like. Two things to set up once:
   `src/csp/dft/job_cluster.py` has a worked SGE example if useful as a
   reference.
 
+### Getting a single-point energy instead of a hill-climb (Step 2 twist)
+
+`step2_twist.py`'s `get_opt_params_dict` normally hill-climbs (a, b) in
+±0.1 Å steps at each fixed (θ, Rt, A2). To instead get just the energy
+*at* the (a, b) you supply — e.g. to build the paper's Fig. 7(c)-style
+landscape from vdW-derived starting structures without also
+re-optimizing (a, b) at every grid point — change the `±0.1` step sizes
+in that function to `0`. With a zero step, the "neighbor grid" collapses
+to the single input point, so the hill-climb reports convergence
+immediately and returns the input (a, b) unchanged; only its energy gets
+computed. This isn't documented anywhere else, so it's easy to miss.
+
 ## Layout
 
 ```
