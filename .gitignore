@@ -2,6 +2,13 @@
 memo*.txt
 paper_summary.txt
 
+# Internal working notes: session logs / debugging history / paper
+# section-by-section mapping (reveals unpublished paper content and
+# reads as a raw log rather than curated docs) -- see README.md instead
+# for the public-facing project description.
+CLAUDE.md
+spec.md
+
 # Python
 __pycache__/
 *.pyc
@@ -9,7 +16,7 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Calculation outputs (results live outside the repo; see CLAUDE.md)
+# Calculation outputs (results live outside the repo)
 runs/
 
 # OS
