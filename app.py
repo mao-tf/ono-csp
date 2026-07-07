@@ -253,9 +253,13 @@ _SETUP_MONOMER_ENV = (
     "(defaults to `~/path/to/monomer/` if unset)."
 )
 _SETUP_SCHEDULER = (
-    "- The legacy scripts submit jobs with `pjsub` (Fugaku/PJM). On our SGE "
-    "cluster, replace the `pjsub`/batch-script generation with `qsub` "
-    "(see `src/csp/dft/job_cluster.py` for an SGE job-script template)."
+    "- The legacy scripts as uploaded submit jobs with `pjsub` "
+    "(Fujitsu/PJM, the scheduler on the cluster they were originally "
+    "written for). They're kept as-is on purpose — adapt the "
+    "batch-script generation and submission call to whatever scheduler "
+    "*your* cluster actually uses (`qsub` for SGE/PBS, `sbatch` for "
+    "Slurm, etc.), not necessarily `qsub`. `src/csp/dft/job_cluster.py` "
+    "has a worked example for one SGE cluster if useful as a reference."
 )
 
 
@@ -1505,9 +1509,9 @@ with tab_transfer:
         ),
         setup=(
             _SETUP_MONOMER_ENV.replace("Tab 1", "Tab 1 — this feeds `get_monomer_xyzR` in tcal_csv.py too") + "\n"
-            + "- `job.sh` (next to `tcal_csv.py`) is a Fugaku/PJM batch script "
-            "template; edit it (or `qsub_process()`'s `pjsub job.sh` call) "
-            "for our SGE cluster."
+            + "- `job.sh` (next to `tcal_csv.py`) is a Fujitsu/PJM batch script "
+            "template as uploaded; edit it (or `qsub_process()`'s `pjsub "
+            "job.sh` call) to match whatever scheduler *your* cluster uses."
         ),
         command=(
             "python tcal_csv.py --init   --auto-dir /path/to/workdir --monomer-name pentacene   # build inputs\n"
