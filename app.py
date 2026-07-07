@@ -62,8 +62,8 @@ st.set_page_config(page_title="csp — Crystal Structure Prediction", layout="wi
 st.title("csp — Crystal Structure Prediction")
 st.caption(
     "Reproduces Ono et al., \"Origin of Layered Herringbone Packing and "
-    "Polymorphism in Polyacenes\" (JACS, submitted). See spec.md for the "
-    "full method-to-tab mapping."
+    "Polymorphism in Polyacenes\" (JACS, submitted). See the project "
+    "README for a full tab-by-tab guide."
 )
 
 
@@ -1072,9 +1072,9 @@ with tab_step2:
                 "a, b, status`. `theta` and starting `a, b` come from Step 1 "
                 "(**Tab 2**'s DFT results); `Rt` (twist shift) and `A2` "
                 "(torsion) are the new values you want to try (e.g. a grid "
-                "of A2 = 0..20° per spec.md's expected "
-                "naphthalene/anthracene optimum). Set `status='NotYet'` for "
-                "each row."
+                "of A2 = 0..20°, since the paper's §2.4 reports optima "
+                "around 13° for naphthalene and 9° for anthracene). Set "
+                "`status='NotYet'` for each row."
             ),
             setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
             command=(
@@ -1094,10 +1094,12 @@ with tab_step2:
             st.caption(
                 "Expected: E minimum at a twist of ≈ 13° for naphthalene, "
                 "≈ 9° for anthracene; no gain for tetracene and longer "
-                "(paper §2.4). At each (A2, Rt), (a, b) were themselves "
-                "hill-climbed -- the map below takes the converged (minimum) "
-                "E at each grid point. Click a point for its T-shaped "
-                "dimer at that twist/shift."
+                "(paper §2.4). At each (A2, Rt), (a, b) may have been "
+                "hill-climbed to convergence, or evaluated once at a fixed "
+                "starting point (step2_twist.py's get_opt_params_dict with "
+                "its neighbor step set to 0, see README) -- either way, the "
+                "map below takes the minimum E recorded at each grid point. "
+                "Click a point for its T-shaped dimer at that twist/shift."
             )
             cols_lower_t = {c.lower(): c for c in df.columns}
             need = {"a2", "rt", "e"}
