@@ -1,16 +1,16 @@
 """Glide-symmetric herringbone layer construction.
 
-Ported from Ohno's legacy code
+Ported from Ono's legacy code
 (legacy/ono_scripts/stepwise_optimization/make_step1.py: get_monomer_xyzR,
 make_xyzfile, make_gjf_xyz).
 
-Frame and variable conventions (Ohno's, kept as-is so results and CSVs stay
+Frame and variable conventions (Ono's, kept as-is so results and CSVs stay
 comparable with the legacy scripts):
 
 - Monomer frame: molecular long axis along z; at A3=0 the molecular plane is
   the yz-plane (plane normal along x). NOTE: which in-plane axis the plane
   normal points to at A3=0 is a convention; swapping it maps theta -> 90-theta
-  with the a/b labels exchanged. To be verified against Ohno's own monomer
+  with the a/b labels exchanged. To be verified against Ono's own monomer
   CSVs when they arrive.
 - A2: rotation about -x ("torsion"; 0 throughout Step 1, scanned in Step 2
   twist).
@@ -34,7 +34,7 @@ _EX = np.array([1.0, 0.0, 0.0])
 _EZ = np.array([0.0, 0.0, 1.0])
 
 # PCA frame (long=x, in-plane short=y, normal=z; see molecule.load_molecule)
-# -> Ohno layer frame (long=z, in-plane short=y, normal=x).
+# -> Ono layer frame (long=z, in-plane short=y, normal=x).
 # Proper rotation (det=+1): (X, Y, Z) -> (Z, Y, -X).
 _LAYER_FRAME_ROT = np.array([
     [0.0, 0.0, 1.0],
@@ -58,7 +58,7 @@ def place_in_layer(
     Ta: float, Tb: float, Tc: float,
     A2: float, A3: float,
 ) -> np.ndarray:
-    """Ohno's get_monomer_xyzR rotation+translation on layer-frame coords."""
+    """Ono's get_monomer_xyzR rotation+translation on layer-frame coords."""
     xyz = coords @ Rod(-_EX, A2).T
     xyz = xyz @ Rod(_EZ, A3).T
     return xyz + np.array([Ta, Tb, Tc])
@@ -83,7 +83,7 @@ def cluster9(
     mol: Molecule, a: float, b: float, theta: float, A2: float = 0.0,
     *, in_layer_frame: bool = False,
 ) -> Tuple[List[str], np.ndarray]:
-    """9-molecule intralayer cluster (Ohno's make_xyzfile), for visualization.
+    """9-molecule intralayer cluster (Ono's make_xyzfile), for visualization.
 
     `theta` is A3 (half of the herringbone dihedral). Returns (symbols,
     coords) covering all 9 molecules in order center, SP x4, T x4.
@@ -157,7 +157,7 @@ def cluster6_inclined(
 
 
 def monomer_csv(mol: Molecule) -> str:
-    """Layer-frame monomer as Ohno's CSV format (columns X, Y, Z, R).
+    """Layer-frame monomer as Ono's CSV format (columns X, Y, Z, R).
 
     This is the file the legacy CLI scripts read from
     '~/path/to/monomer/{name}.csv' (get_monomer_xyzR); offer it as a

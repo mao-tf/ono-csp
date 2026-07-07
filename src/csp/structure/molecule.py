@@ -1,11 +1,11 @@
 """Molecule loading and alignment.
 
 `vdw_radius`, `R2atom`, `Rod`, `read_xyz` are ported from auto_opt
-(`auto_opt/utils.py`); they are shared with Ohno's legacy utils.py, which
+(`auto_opt/utils.py`); they are shared with Ono's legacy utils.py, which
 uses the same Bondi radii and Rodrigues rotation.
 
 Rigid-body placement into the herringbone layer lives in
-`structure.intralayer` (Ohno's A2/A3 convention) — this module only loads a
+`structure.intralayer` (Ono's A2/A3 convention) — this module only loads a
 monomer XYZ and aligns it to a reproducible principal-axis frame.
 """
 from __future__ import annotations

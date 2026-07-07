@@ -1,6 +1,6 @@
 """Interlayer vdW pre-scan (Step 3 vdW): V(x,y) map before DFT refinement.
 
-Vectorized, faithful port of Ohno's step3_para_vdw.py `get_c_vec_vdw`
+Vectorized, faithful port of Ono's step3_para_vdw.py `get_c_vec_vdw`
 (legacy/ono_scripts/stepwise_optimization/step3_para_vdw.py). That function
 loops over every atom pair in pure Python for each (Ra, Rb) grid point,
 which is far too slow for a GUI-interactive scan at its native 0.1 Å
@@ -41,7 +41,7 @@ def _build_layer_cluster(
     coords_p: np.ndarray, coords_t: np.ndarray, radii: np.ndarray,
     a_vec: np.ndarray, b_vec: np.ndarray, pattern: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """9-molecule intralayer neighbor cluster, per Ohno's arr_list1/arr_list2.
+    """9-molecule intralayer neighbor cluster, per Ono's arr_list1/arr_list2.
 
     `pattern` selects which of the two glide-related patterns (1 or 2); the
     'p' slots use `coords_p`, the 't' slots use `coords_t`.
@@ -68,7 +68,7 @@ def _z_max_for_shift(
     under_coords: np.ndarray, under_radii: np.ndarray,
 ) -> float:
     """Minimum z such that `over_coords` (already xy/z-shifted) clears every
-    atom in `under_coords` — vectorized equivalent of Ohno's inner double loop.
+    atom in `under_coords` — vectorized equivalent of Ono's inner double loop.
     """
     d_xy2 = ((over_coords[:, None, :2] - under_coords[None, :, :2]) ** 2).sum(-1)
     rad_sum2 = (over_radii[:, None] + under_radii[None, :]) ** 2
@@ -135,7 +135,7 @@ def interlayer_vdw_scan(
             z_max = max(z_max1, z_max2)
             # `z_max` is only the *additional* vdW-clearing gap on top of the
             # z_shift baseline already applied to over1/over2 above (matching
-            # Ohno's original get_c_vec_vdw, which returns this same
+            # Ono's original get_c_vec_vdw, which returns this same
             # increment — verified bit-for-bit against it). `cz` is the
             # actual overlayer z-coordinate (z_shift + z_max): use *this* one
             # as the c-vector's z component downstream (3D preview, exported

@@ -4,9 +4,9 @@
 Usage:
   streamlit run app.py
 
-Reproduces the structure-search pipeline of Ohno et al. (JACS, submitted).
+Reproduces the structure-search pipeline of Ono et al. (JACS, submitted).
 See spec.md for the full method-to-tab mapping and for how each tab maps to
-Ohno's legacy scripts (legacy/ono_scripts/).
+Ono's legacy scripts (legacy/ono_scripts/).
 
 Execution policy (spec.md "実行方式", meeting 2026-07-04):
 - The Step 1a vdW scan runs directly in this GUI (it completes on a laptop).
@@ -15,7 +15,7 @@ Execution policy (spec.md "実行方式", meeting 2026-07-04):
 - Every results section accepts a drag & dropped CSV; until one is dropped it
   falls back to the precomputed sample results bundled in example/pentacene/.
 
-Tab layout (spec.md "大野コード対応表", 2026-07-05): Ohno's actual pipeline is
+Tab layout (spec.md "大野コード対応表", 2026-07-05): Ono's actual pipeline is
 3 steps (step1 -> step2 para/twist -> step3 para/twist -> tcal), not the
 5-section paper draft this spec.md started from. Tabs are grouped by step
 number, with para/twist as sub-tabs within Step 2 and Step 3 (they are
@@ -54,14 +54,14 @@ MOLECULE_DIR = ROOT / "data" / "molecules"
 EXAMPLE_DIR = ROOT / "example" / "pentacene"
 PRESET_MOLECULES = ["naphthalene", "anthracene", "tetracene", "pentacene", "hexacene"]
 
-# Route line used by Ohno's legacy input generators (make_step*.py)
+# Route line used by Ono's legacy input generators (make_step*.py)
 GAUSSIAN_ROUTE = "#P TEST b3lyp/6-311G** EmpiricalDispersion=GD3 counterpoise=2"
 LEGACY_DIR = "legacy/ono_scripts/stepwise_optimization"
 
 st.set_page_config(page_title="csp — Crystal Structure Prediction", layout="wide")
 st.title("csp — Crystal Structure Prediction")
 st.caption(
-    "Reproduces Ohno et al., \"Origin of Layered Herringbone Packing and "
+    "Reproduces Ono et al., \"Origin of Layered Herringbone Packing and "
     "Polymorphism in Polyacenes\" (JACS, submitted). See spec.md for the "
     "full method-to-tab mapping."
 )
@@ -225,7 +225,7 @@ def cli_howto(
     output: str,
     show_route: bool = True,
 ) -> None:
-    """Standard 4-part "how to run this step with Ohno's package" block.
+    """Standard 4-part "how to run this step with Ono's package" block.
 
     Every CLI section (Step 1 DFT, Step 2/3 para/twist, Transfer Integrals)
     uses the same shape so a user who has read one knows where to look in
@@ -672,7 +672,7 @@ with tab_step1:
     cli_howto(
         what=(
             "Step 1 DFT-D refinement runs on an HPC with Gaussian16 using "
-            f"Ohno's scripts in `{LEGACY_DIR}/` (`step1.py` + `make_step1.py`). "
+            f"Ono's scripts in `{LEGACY_DIR}/` (`step1.py` + `make_step1.py`). "
             "It hill-climbs (a, b) in 0.1 Å steps at each fixed alpha, "
             "minimizing E_intra(8) = 4·E_t + 2·E_p1 + 2·E_p2 (BSSE-corrected "
             "dimer interaction energies)."
@@ -993,7 +993,7 @@ with tab_step2:
                             hovertemplate="x=%{x:.1f}<br>y=%{y:.1f}<extra>local min</extra>",
                         ))
                         fig5b.update_layout(
-                            # Ohno's plot2d() axes: x = theta_incl*cos(phi_incl),
+                            # Ono's plot2d() axes: x = theta_incl*cos(phi_incl),
                             # y = theta_incl*sin(phi_incl) (a polar->Cartesian
                             # transform, radius=theta_incl, angle=phi_incl) --
                             # matches the paper's Fig. 5(b) layout (x in
@@ -1501,7 +1501,7 @@ with tab_transfer:
             "`legacy/ono_scripts/tcal_csv/` (`tcal_csv.py`) — a wrapper "
             "around Prof. Matsui's tcal program "
             "(https://github.com/matsui-lab-yamagata/tcal; `tcal_1.py` is "
-            "Ohno's slightly modified copy). For each arrangement row it "
+            "Ono's slightly modified copy). For each arrangement row it "
             "builds T-shaped and slipped-parallel dimer inputs, runs "
             "Gaussian16, and extracts the HOMO-HOMO transfer integral. MOs "
             "are computed at B3LYP/6-31G* (paper METHOD)."
