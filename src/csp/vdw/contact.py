@@ -1,10 +1,10 @@
 """Rigid-sphere VdW contact distance and the Step 1a coarse (a, b) scan.
 
-`vdw_contact_distance` is the vectorized equivalent of Ono's `vdw_R`
+`vdw_contact_distance` is the vectorized equivalent of Ohno's `vdw_R`
 (legacy/ono_scripts/stepwise_optimization/vdw.py) and auto_opt's `vdw_R`
 (both compute the same quantity with O(N^2) Python loops).
 
-`step1a_scan` ports Ono's `init_process`/`get_init_para_csv`
+`step1a_scan` ports Ohno's `init_process`/`get_init_para_csv`
 (legacy/ono_scripts/stepwise_optimization/step1.py) exactly:
 
 For each herringbone half-angle alpha (= A3 = the `theta` column of the

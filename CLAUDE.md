@@ -1,6 +1,6 @@
 # csp — Crystal Structure Prediction Package
 
-大野論文（Ono et al., JACS submitted）の結晶構造予測手法を再現・パッケージ化し GitHub + Zenodo で公開するプロジェクト。
+大野論文（Ohno et al., JACS submitted）の結晶構造予測手法を再現・パッケージ化し GitHub + Zenodo で公開するプロジェクト。
 
 **全体仕様書**: `spec.md` を参照（論文対応表・GUI設計・ファイル構成など）
 

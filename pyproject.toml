@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "csp"
 version = "0.1.0"
-description = "Crystal structure prediction for layered herringbone polyacene packings (Ono et al., JACS submitted)"
+description = "Crystal structure prediction for layered herringbone polyacene packings (Ohno et al., JACS submitted)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

@@ -1,13 +1,13 @@
 """Reconstruct the paper's Fig. 2b-style branch classification from a
 Step 1 DFT-D hill-climb history (step1.csv).
 
-step1.csv only records every (theta, a, b) point Ono's hill-climb visited
+step1.csv only records every (theta, a, b) point Ohno's hill-climb visited
 plus its energy -- not which of the 2-3 seeds (per theta) each point
 belongs to, nor which point a given seed's climb converged to. Both are
 recoverable without any new DFT calculation:
 
 - The seeds and their kind (a-stack / b-stack / local min) are exactly
-  `csp.vdw.contact.step1a_scan`'s `df_init` (same vdW rough-scan Ono's own
+  `csp.vdw.contact.step1a_scan`'s `df_init` (same vdW rough-scan Ohno's own
   `init_process` uses, verified to produce identical (a, b, theta) values).
 - Replaying the same greedy 3x3-neighbor descent step1.py's
   `get_opt_params_dict` uses, but against step1.csv's already-computed

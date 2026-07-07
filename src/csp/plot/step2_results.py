@@ -1,7 +1,7 @@
 """Reconstruct the paper's Fig. 5(b)-style (theta_incl, phi_incl) map from
 step2_para.csv's independent Et(z)/Ep(z) 1D scans.
 
-Confirmed against Ono's own `step2_para.py::plot2d()` (added 2026-07-06,
+Confirmed against Ohno's own `step2_para.py::plot2d()` (added 2026-07-06,
 after this was independently derived and verified algebraically -- see
 spec.md "N形2次元マップの再構成方法"): a uniform long-axis inclination is
 the plane z(x, y) = kx*x + ky*y, so Eintra(6) at any (theta_incl, phi_incl)
@@ -22,7 +22,7 @@ def build_theta_phi_map(df_step2: pd.DataFrame, a: float, b: float) -> pd.DataFr
     Et, Ep). Returns columns zt, zp, theta_incl, phi_incl, x, y, E, Et1, Et2,
     Ep.
 
-    `x`/`y` are Ono's own plot2d() axes -- theta_incl as a radius and
+    `x`/`y` are Ohno's own plot2d() axes -- theta_incl as a radius and
     phi_incl as the angle, in a polar-to-Cartesian transform
     (x = theta_incl*cos(phi_incl), y = theta_incl*sin(phi_incl)), NOT plain
     (phi_incl, theta_incl) axes. This is what actually reproduces the

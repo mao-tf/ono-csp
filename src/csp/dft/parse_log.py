@@ -1,6 +1,6 @@
 """Extract energies from Gaussian16 .log output.
 
-`read_counterpoise_energies` ports Ono's `get_E`
+`read_counterpoise_energies` ports Ohno's `get_E`
 (legacy/ono_scripts/stepwise_optimization/utils.py), now that the log format
 is confirmed: a Counterpoise=2 job prints five "SCF Done: E(R...)" lines per
 pair (supermolecule; fragment 1 and 2 in the full (ghost) basis; fragment 1

@@ -1,6 +1,6 @@
 # csp — Crystal Structure Prediction
 
-Reproduces the crystal structure search pipeline of Ono et al., *"Origin of
+Reproduces the crystal structure search pipeline of Ohno et al., *"Origin of
 Layered Herringbone Packing and Polymorphism in Polyacenes: A Quantum
 Chemical Optimization Approach"* (JACS, submitted).
 
@@ -50,7 +50,7 @@ src/csp/
 ├── transfer/    transfer-integral (HOMO-HOMO overlap) calculation
 └── plot/        py3Dmol / Plotly viewers for the Streamlit UI
 data/molecules/  B3LYP-D3/6-311G** optimized polyacene monomer XYZ files
-legacy/          staging area for Ono's existing CUI scripts
+legacy/          staging area for Ohno's existing CUI scripts
 ```
 
 ## License

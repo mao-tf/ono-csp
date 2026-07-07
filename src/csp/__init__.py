@@ -1,6 +1,6 @@
 """csp — Crystal Structure Prediction for layered herringbone polyacene packings.
 
-Reproduces the structure search pipeline of Ono et al. (JACS, submitted).
+Reproduces the structure search pipeline of Ohno et al. (JACS, submitted).
 See spec.md at the repository root for the full method-to-code mapping.
 """
 

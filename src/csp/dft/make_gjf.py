@@ -1,4 +1,4 @@
-"""Gaussian16 input (.inp/.gjf) generation, in Ono's legacy format.
+"""Gaussian16 input (.inp/.gjf) generation, in Ohno's legacy format.
 
 Ports get_xyzR_lines / make_gjf_xyz from
 legacy/ono_scripts/stepwise_optimization/make_step1.py: counterpoise dimers
