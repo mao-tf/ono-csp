@@ -702,39 +702,26 @@ with tab_step1:
             "identifies the R-form (alpha ≈ 25°)."
         )
 
-        if mol2 is None:
-            st.info("Select a molecule in Tab 1 first (needed to re-derive the "
-                     "a-stack/b-stack/local-min branches and the 3D preview). "
-                     "Showing the raw hill-climb history instead:")
-            line_plot_section(
-                df, "s1dft_plot",
-                x_candidates=["theta", "alpha"],
-                y_candidates=["e", "e_intra8"],
-            )
+        st.caption(
+            "step1.csv alone doesn't record which structural branch "
+            "(a-stack / b-stack / local min) each hill-climb point "
+            "belongs to. This is recovered directly from the data: at "
+            "each alpha, the visited (a, b) points are treated as a 2D "
+            "energy grid, and its local minima *are* the converged "
+            "branches (a DFT hill-climb only ever stops at one). "
+            "Polyacenes are also exactly symmetric under alpha -> "
+            "90-alpha with a/b swapped (same physical structure, axes "
+            "relabeled), so a scan run only up to alpha=45 is reflected "
+            "to cover the full range, matching the paper's Fig. 2(b). "
+            "Click a point for its 9-molecule structure."
+        )
+        if "theta" not in df.columns:
+            st.warning("Expected a 'theta' column in this CSV to classify branches.")
         else:
-            st.caption(
-                "step1.csv alone doesn't record which of the 2-3 seeds per "
-                "alpha (a-stack / b-stack / local min, same vdW rough-scan as "
-                "the pre-scan above) each hill-climb point belongs to, or "
-                "where each seed's climb converged. Both are reconstructed "
-                "here: the seeds come from re-running the vdW scan, and each "
-                "seed's convergence point is found by replaying the same "
-                "greedy neighbor-descent step1.py used, against step1.csv's "
-                "already-computed energies (no new DFT). Polyacenes are also "
-                "exactly symmetric under alpha -> 90-alpha with a/b swapped "
-                "(same physical structure, axes relabeled), so a scan run "
-                "only up to alpha=45 is reflected to cover the full range, "
-                "matching the paper's Fig. 2(b). Click a point for its "
-                "9-molecule structure."
-            )
-            thetas = sorted(df["theta"].dropna().unique().tolist()) if "theta" in df.columns else []
-            thetas = [t for t in thetas if t <= 45.0 + 1e-6]
-            if not thetas:
-                st.warning("No alpha <= 45 rows found in this CSV to classify.")
+            df_branches = classify_and_fold_step1_results(df)
+            if len(df_branches) == 0:
+                st.warning("No branches found to classify in this CSV.")
             else:
-                df_branches = classify_and_fold_step1_results(
-                    mol2, thetas, df, radii_overrides=st.session_state.get("vdw_radii_overrides")
-                )
                 col_fig2b, col_3d_fig2b = st.columns([2, 1])
                 with col_fig2b:
                     fig2b = go.Figure()
@@ -775,38 +762,41 @@ with tab_step1:
                         st.dataframe(df_branches, width="stretch")
                 with col_3d_fig2b:
                     st.markdown("**Structure preview**")
-                    current_2b = st.session_state.get("s1fig2b_current")
-                    if current_2b is None and len(df_branches):
-                        # The global minimum is physically identical whether
-                        # shown via its original theta (<=45) or its folded
-                        # mirror (theta -> 90-theta, a/b swapped) -- prefer
-                        # the unfolded one so the displayed alpha matches the
-                        # commonly-cited value (e.g. ~25 deg) instead of its
-                        # (equally correct but less recognizable) >45 mirror.
-                        e_min = df_branches["E"].min()
-                        tied = df_branches[np.isclose(df_branches["E"], e_min)]
-                        unfolded_tied = tied[~tied["folded"]]
-                        best = (unfolded_tied if len(unfolded_tied) else tied).iloc[0]
-                        current_2b = {
-                            "alpha": float(best["theta"]), "a": float(best["a"]), "b": float(best["b"]),
-                            "label": f"default (min E) [{_S1R_KIND_LABEL.get(best['kind'], best['kind'])}]: "
-                                     f"alpha={best['theta']} a={best['a']} b={best['b']}",
-                        }
-                        # Persist this so Tab 3/Tab 4's own a/b/theta defaults
-                        # pick up the actual R-form optimum immediately, even
-                        # before the user clicks a point here -- otherwise
-                        # they'd fall back to an arbitrary placeholder instead
-                        # of "whatever this tab is already showing".
-                        st.session_state["s1fig2b_current"] = current_2b
-                    if current_2b is not None:
-                        st.caption(current_2b["label"])
-                        syms_2b, coords_2b = cluster9(mol2, current_2b["a"], current_2b["b"], current_2b["alpha"])
-                        render_molecule_3d(
-                            syms_2b, coords_2b,
-                            f"{mol2.name} cluster9 alpha={current_2b['alpha']} "
-                            f"a={current_2b['a']} b={current_2b['b']}",
-                            key_suffix="s1fig2b", style_key="s1fig2b_style",
-                        )
+                    if mol2 is None:
+                        st.caption("Select a molecule in Tab 1 for the 3D preview.")
+                    else:
+                        current_2b = st.session_state.get("s1fig2b_current")
+                        if current_2b is None and len(df_branches):
+                            # The global minimum is physically identical whether
+                            # shown via its original theta (<=45) or its folded
+                            # mirror (theta -> 90-theta, a/b swapped) -- prefer
+                            # the unfolded one so the displayed alpha matches the
+                            # commonly-cited value (e.g. ~25 deg) instead of its
+                            # (equally correct but less recognizable) >45 mirror.
+                            e_min = df_branches["E"].min()
+                            tied = df_branches[np.isclose(df_branches["E"], e_min)]
+                            unfolded_tied = tied[~tied["folded"]]
+                            best = (unfolded_tied if len(unfolded_tied) else tied).iloc[0]
+                            current_2b = {
+                                "alpha": float(best["theta"]), "a": float(best["a"]), "b": float(best["b"]),
+                                "label": f"default (min E) [{_S1R_KIND_LABEL.get(best['kind'], best['kind'])}]: "
+                                         f"alpha={best['theta']} a={best['a']} b={best['b']}",
+                            }
+                            # Persist this so Tab 3/Tab 4's own a/b/theta defaults
+                            # pick up the actual R-form optimum immediately, even
+                            # before the user clicks a point here -- otherwise
+                            # they'd fall back to an arbitrary placeholder instead
+                            # of "whatever this tab is already showing".
+                            st.session_state["s1fig2b_current"] = current_2b
+                        if current_2b is not None:
+                            st.caption(current_2b["label"])
+                            syms_2b, coords_2b = cluster9(mol2, current_2b["a"], current_2b["b"], current_2b["alpha"])
+                            render_molecule_3d(
+                                syms_2b, coords_2b,
+                                f"{mol2.name} cluster9 alpha={current_2b['alpha']} "
+                                f"a={current_2b['a']} b={current_2b['b']}",
+                                key_suffix="s1fig2b", style_key="s1fig2b_style",
+                            )
 
 
 # ══════════════════════════════════════════════════════════

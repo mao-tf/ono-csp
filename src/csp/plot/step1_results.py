@@ -1,107 +1,79 @@
 """Reconstruct the paper's Fig. 2b-style branch classification from a
 Step 1 DFT-D hill-climb history (step1.csv).
 
-step1.csv only records every (theta, a, b) point Ono's hill-climb visited
-plus its energy -- not which of the 2-3 seeds (per theta) each point
-belongs to, nor which point a given seed's climb converged to. Both are
-recoverable without any new DFT calculation:
+step1.csv only records every (theta, a, b) point visited plus its energy
+-- not which structural branch (a-stack / b-stack / local min) each point
+belongs to, nor which point each branch converged to. Both are recovered
+directly from the data itself, with no dependency on re-running any vdW
+model or knowing which molecule/monomer produced the CSV:
 
-- The seeds and their kind (a-stack / b-stack / local min) are exactly
-  `csp.vdw.contact.step1a_scan`'s `df_init` (same vdW rough-scan Ono's own
-  `init_process` uses, verified to produce identical (a, b, theta) values).
-- Replaying the same greedy 3x3-neighbor descent step1.py's
-  `get_opt_params_dict` uses, but against step1.csv's already-computed
-  (theta, a, b) -> E lookup instead of launching new Gaussian jobs,
-  deterministically finds the same converged point the real hill-climb did.
+- At each theta, pivot the visited (a, b) into a 2D energy grid and find
+  its local minima (`scipy.ndimage.minimum_filter`, the same approach
+  used for the other 2D maps in this app) -- these *are* the converged
+  branches, directly, since the DFT hill-climb only ever stops at a local
+  minimum of its own sampled grid.
+- Label them by sorting on `a`: the smallest-a minimum is 'a_contact',
+  the largest-a minimum is 'b_contact' (matching the vdW pre-scan's own
+  naming for the two beta-sweep endpoints), and anything in between is
+  'local_min' -- this reproduces step1a_scan's kind labels without
+  calling it.
 
 Polyacenes are also exactly symmetric under theta -> 90-theta with a and b
-swapped (verified against the vdW contact model: vdw_R(theta) for 'a' equals
-vdw_R(90-theta) for 'b'), since it's the same physical structure with the a/b
-labels exchanged. Reflecting the computed branches through this symmetry
-extends a theta in [5, 45] scan to the full [5, 85] range shown in the
-paper's Fig. 2b, with no extra computation.
+swapped (same physical structure, axes relabeled). Reflecting the
+computed branches through this symmetry extends a theta in [5, 45] scan
+to the full [5, 85] range shown in the paper's Fig. 2b, with no extra
+computation.
 """
 from __future__ import annotations
 
-from typing import Iterable, Mapping, Optional
-
 import numpy as np
 import pandas as pd
-
-from csp.structure.molecule import Molecule
-from csp.vdw.contact import step1a_scan
+from scipy.ndimage import minimum_filter
 
 KIND_LABEL = {"b_contact": "b-stack", "a_contact": "a-stack", "local_min": "local min"}
 KIND_COLOR = {"b_contact": "#1f77b4", "a_contact": "#d62728", "local_min": "#2ca02c"}
 _KIND_SWAP = {"b_contact": "a_contact", "a_contact": "b_contact", "local_min": "local_min"}
 
 
-def _replay_hill_climb(
-    lookup: Mapping[tuple, float], theta: float, a0: float, b0: float,
-) -> tuple[float, float, Optional[float]]:
-    """Greedy 3x3-neighbor descent identical to step1.py's
-    get_opt_params_dict, but reading energies from `lookup` instead of
-    submitting new Gaussian jobs. Terminates at whatever step1.csv shows
-    the real hill-climb converged to (every point it could step to was,
-    by construction, already computed there).
+def _local_minima_at_theta(df_theta: pd.DataFrame) -> pd.DataFrame:
+    """Local minima of E over the visited (a, b) grid at one fixed theta,
+    labeled by position (smallest a -> a_contact, largest a -> b_contact,
+    else local_min).
     """
-    theta = round(theta, 1)
-    a, b = round(a0, 1), round(b0, 1)
-    while True:
-        candidates = []
-        for da in (-0.1, 0.0, 0.1):
-            for db in (-0.1, 0.0, 0.1):
-                key = (theta, round(a + da, 1), round(b + db, 1))
-                if key in lookup:
-                    candidates.append((lookup[key], key[1], key[2]))
-        if not candidates:
-            return a, b, lookup.get((theta, a, b))
-        best_E, best_a, best_b = min(candidates)
-        if (best_a, best_b) == (a, b):
-            return a, b, best_E
-        a, b = best_a, best_b
+    pivot = df_theta.pivot_table(index="b", columns="a", values="E", aggfunc="min")
+    grid = pivot.values
+    is_min = (grid == minimum_filter(grid, size=3)) & np.isfinite(grid)
+    bi, ai = np.where(is_min)
+    a_vals = pivot.columns.to_numpy()[ai]
+    b_vals = pivot.index.to_numpy()[bi]
+    e_vals = grid[bi, ai]
+
+    order = np.argsort(a_vals)
+    a_vals, b_vals, e_vals = a_vals[order], b_vals[order], e_vals[order]
+
+    n = len(a_vals)
+    if n == 0:
+        return pd.DataFrame(columns=["a", "b", "E", "kind"])
+    kinds = ["local_min"] * n
+    kinds[0] = "a_contact"
+    kinds[-1] = "b_contact"  # if n==1 this overwrites index 0, giving a single b_contact point
+    return pd.DataFrame({"a": a_vals, "b": b_vals, "E": e_vals, "kind": kinds})
 
 
-def classify_and_fold_step1_results(
-    mol: Molecule,
-    alphas: Iterable[float],
-    df_results: pd.DataFrame,
-    radii_overrides: Optional[Mapping[str, float]] = None,
-) -> pd.DataFrame:
+def classify_and_fold_step1_results(df_results: pd.DataFrame) -> pd.DataFrame:
     """Branch-classified, theta<->90-theta folded Step 1 DFT-D results.
 
     `df_results` is step1.csv (columns a, b, theta, E, ...). Returns one row
-    per (seed, fold) with columns theta, a, b, E, kind ('b_contact' /
+    per (branch, fold) with columns theta, a, b, E, kind ('b_contact' /
     'a_contact' / 'local_min'), folded (bool) -- ready for a Fig. 2b-style
     plot colored by `kind`.
     """
-    _, df_init = step1a_scan(mol, alphas, radii_overrides=radii_overrides)
-
-    lookup = {
-        (round(r.theta, 1), round(r.a, 1), round(r.b, 1)): r.E
-        for r in df_results.itertuples()
-    }
-
     rows = []
-    converged = {}  # theta -> {(a_f, b_f) already claimed by a-stack/b-stack}
-    # Process a/b-stack endpoints before local_min so a local_min that
-    # converges onto the exact same point (a common outcome once the
-    # hill-climb actually runs -- the "seed" only picks the starting point,
-    # not a separate final structure) can be recognized as redundant and
-    # dropped, instead of duplicating an existing branch and creating a
-    # jump discontinuity where it happens to differ.
-    order = {"b_contact": 0, "a_contact": 0, "local_min": 1}
-    for seed in sorted(df_init.itertuples(), key=lambda s: order.get(s.kind, 1)):
-        a_f, b_f, E_f = _replay_hill_climb(lookup, seed.theta, seed.a, seed.b)
-        if E_f is None:
-            continue
-        theta_r = round(seed.theta, 1)
-        point = (a_f, b_f)
-        if seed.kind == "local_min" and point in converged.get(theta_r, set()):
-            continue
-        converged.setdefault(theta_r, set()).add(point)
-        rows.append({"theta": theta_r, "a": a_f, "b": b_f, "E": E_f,
-                      "kind": seed.kind, "folded": False})
+    for theta, df_theta in df_results.groupby("theta"):
+        branches = _local_minima_at_theta(df_theta)
+        for r in branches.itertuples():
+            rows.append({"theta": round(float(theta), 1), "a": float(r.a), "b": float(r.b),
+                         "E": float(r.E), "kind": r.kind, "folded": False})
 
     df_branches = pd.DataFrame(rows)
     if len(df_branches) == 0:
