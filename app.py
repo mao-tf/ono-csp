@@ -1557,3 +1557,80 @@ with tab_transfer:
                 x_candidates=["theta", "alpha", "z"],
                 y_candidates=["j_t", "j_p", "j"],
             )
+
+    st.divider()
+    st.subheader("Fig. 11(b)-style: J vs alpha (HB / PS branches)")
+    st.caption(
+        "Transfer integrals along the Fig. 2(b) branches (A2=0, z=0 at "
+        "each alpha): run tcal_csv.py with one init_params.csv row per "
+        "(a, b, theta) point from Tab 2's a-stack/b-stack branches, then "
+        "combine init_params.csv with result.txt's J columns (same row "
+        "order) into one CSV. Expected columns: alpha (or theta), J_t, "
+        "J_p, and optionally kind (e.g. a_stack/b_stack) to color "
+        "separate branches."
+    )
+    df_b, src_b = load_results_csv("s5b_results", "transfer_integrals_alpha.csv")
+    if df_b is not None:
+        source_badge(src_b)
+        cols_lower_b = {c.lower(): c for c in df_b.columns}
+        xcand_b = [c for c in ("alpha", "theta") if c in cols_lower_b]
+        if not xcand_b or not {"j_t", "j_p"} <= set(cols_lower_b):
+            st.warning(f"Expected columns alpha/theta, J_t, J_p (got {list(df_b.columns)}).")
+        else:
+            xb = cols_lower_b[xcand_b[0]]
+            jtb, jpb = cols_lower_b["j_t"], cols_lower_b["j_p"]
+            kindb = cols_lower_b.get("kind")
+            figb = go.Figure()
+            groups_b = df_b.groupby(kindb) if kindb else [(None, df_b)]
+            for kind, grp in groups_b:
+                grp = grp.sort_values(xb)
+                suffix = f" ({kind})" if kind is not None else ""
+                figb.add_trace(go.Scatter(
+                    x=grp[xb], y=grp[jtb], mode="lines+markers", name=f"J_t{suffix}",
+                ))
+                figb.add_trace(go.Scatter(
+                    x=grp[xb], y=grp[jpb], mode="lines+markers", name=f"J_p{suffix}",
+                    line=dict(dash="dash"),
+                ))
+            figb.update_layout(
+                xaxis_title=xb, yaxis_title="J (meV)",
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
+            st.plotly_chart(figb, width="stretch")
+            with st.expander("Data table"):
+                st.dataframe(df_b, width="stretch")
+
+    st.divider()
+    st.subheader("Fig. 11(c)-style: J vs theta_incl")
+    st.caption(
+        "Transfer integrals along the uniform long-axis inclination "
+        "direction (Step 2 para's z / theta_incl, glide-symmetric so a "
+        "single z per row is enough — the same z used in Tab 3's "
+        "Et(z)/Ep(z) scan feeds tcal_csv.py's init_params.csv `z` "
+        "column). Expected columns: theta_incl (or z), J_t, J_p."
+    )
+    df_c, src_c = load_results_csv("s5c_results", "transfer_integrals_thetaincl.csv")
+    if df_c is not None:
+        source_badge(src_c)
+        cols_lower_c = {c.lower(): c for c in df_c.columns}
+        xcand_c = [c for c in ("theta_incl", "z") if c in cols_lower_c]
+        if not xcand_c or not {"j_t", "j_p"} <= set(cols_lower_c):
+            st.warning(f"Expected columns theta_incl/z, J_t, J_p (got {list(df_c.columns)}).")
+        else:
+            xc_ = cols_lower_c[xcand_c[0]]
+            jtc_, jpc_ = cols_lower_c["j_t"], cols_lower_c["j_p"]
+            grp_c = df_c.sort_values(xc_)
+            figc = go.Figure()
+            figc.add_trace(go.Scatter(
+                x=grp_c[xc_], y=grp_c[jtc_], mode="lines+markers", name="J_t (T-shaped)",
+            ))
+            figc.add_trace(go.Scatter(
+                x=grp_c[xc_], y=grp_c[jpc_], mode="lines+markers", name="J_p (slipped-parallel)",
+            ))
+            figc.update_layout(
+                xaxis_title=xc_, yaxis_title="J (meV)",
+                margin=dict(l=20, r=20, t=30, b=20),
+            )
+            st.plotly_chart(figc, width="stretch")
+            with st.expander("Data table"):
+                st.dataframe(df_c, width="stretch")
