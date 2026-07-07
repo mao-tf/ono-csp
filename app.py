@@ -349,11 +349,14 @@ with tab_step1:
     # ─── Section: vdW pre-scan (runs in this GUI) ─────────────────
     st.subheader("vdW pre-scan — runs in this GUI")
     st.caption(
-        "Rigid-sphere vdW contact model (same algorithm as legacy "
-        "step1.py --init): for each herringbone half-angle alpha, sweep the "
-        "T-contact direction and find the smallest cell S = a×b compatible "
-        "with T and SP contacts. Initial DFT candidates are the local minima "
-        "of S plus both endpoints."
+        "Rigid-sphere vdW contact model — a fast, vectorized "
+        "reimplementation (not a call into legacy step1.py itself; "
+        "verified to reproduce its `--init` output numerically) that "
+        "runs directly in this GUI: for each herringbone half-angle "
+        "alpha, sweep the T-contact direction and find the smallest "
+        "cell S = a×b compatible with T and slipped-parallel contacts. "
+        "Initial DFT candidates are the local minima of S plus both "
+        "endpoints."
     )
     c1, c2, c3 = st.columns(3)
     alpha_min = c1.number_input("alpha min (deg)", value=5.0, key="s1vdw_amin")
@@ -585,7 +588,7 @@ with tab_step1:
                     st.caption(
                         "vdW analogue of Fig. S1(c): S vs contact-direction angle "
                         "β for a few alpha values. **Solid, thin, full color** = "
-                        "SP-neighbor vdW spheres clear (valid); **long-dashed, "
+                        "slipped-parallel-neighbor vdW spheres clear (valid); **long-dashed, "
                         "thick, faded** = they overlap (infeasible). Click a "
                         "point to preview its structure."
                     )
@@ -903,9 +906,9 @@ with tab_step2:
                         z_sel = p0.get("x")
                         curve_num = p0.get("curve_number", 0)
                         if z_sel is not None:
-                            # step2_para.py's own rule: SP contact runs along
-                            # whichever of a/b is the *shorter* axis (along b
-                            # when a>b, else along a).
+                            # step2_para.py's own rule: the slipped-parallel
+                            # contact runs along whichever of a/b is the
+                            # *shorter* axis (along b when a>b, else along a).
                             kind = "t" if curve_num == 0 else ("p1" if s2_a > s2_b else "p2")
                             st.session_state["s2_current"] = {
                                 "kind": kind, "z": float(z_sel),
@@ -1212,8 +1215,10 @@ with tab_step3:
     with sub_para3:
         st.subheader("vdW pre-scan — runs in this GUI")
         st.caption(
-            "Rigid-sphere interlayer contact model (same algorithm as legacy "
-            "step3_para_vdw.py, vectorized): at fixed intralayer parameters "
+            "Rigid-sphere interlayer contact model — a fast, vectorized "
+            "reimplementation (not a call into legacy step3_para_vdw.py "
+            "itself; verified to reproduce its output numerically) that "
+            "runs directly in this GUI: at fixed intralayer parameters "
             "(a, b, theta, Rt, Rp), slide the upper layer by (Ra, Rb) and find "
             "the vdW-limited interlayer distance z — this is the paper's "
             "Fig. 6(b–d) upper-panel V(x,y) = a·b·z map. Click a point (or one "
