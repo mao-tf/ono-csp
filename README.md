@@ -202,6 +202,39 @@ looks like. Two things to set up once:
   `src/csp/dft/job_cluster.py` has a worked SGE example if useful as a
   reference.
 
+### What a working directory (`--auto-dir`) looks like
+
+Each command creates/uses a working directory (the path you pass to
+`--auto-dir`) with the same shape, adapted from Ono's own
+`legacy/ono_scripts/stepwise_optimization/readme.txt`:
+
+```
+your-working-dir/
+├── stepX_init_params.csv   # starting points -- from a GUI download, or hand-written
+├── stepX.csv               # results, created/updated as jobs finish
+├── gaussian/               # created automatically
+│   ├── *.inp               # Gaussian16 input files
+│   ├── *.log               # Gaussian16 output files
+│   └── *.r1                # batch job scripts
+└── gaussview/              # created automatically
+    └── *.xyz               # structures, for visualization
+```
+
+For the transfer-integral workflow (`legacy/ono_scripts/tcal_csv/`), the
+same idea but one subdirectory per arrangement (from
+`legacy/ono_scripts/tcal_csv/readme.txt`):
+
+```
+your-working-dir/
+├── init_params.csv                # arrangements to compute (a, b, theta, A2, z)
+├── result.txt                     # summarized transfer integrals, after --result
+└── a=.._b=.._theta=.._A2=.._z=../ # one folder per arrangement
+    ├── job.sh, tcal_1.py          # copied in automatically
+    ├── test_t/test_p*.gjf         # Gaussian16 inputs (T-shaped / slipped-parallel)
+    ├── test_t/test_p*.log         # Gaussian16 outputs
+    └── test_t/test_p.txt          # per-arrangement transfer integral
+```
+
 ### Getting a single-point energy instead of a hill-climb (Step 2 twist)
 
 `step2_twist.py`'s `get_opt_params_dict` normally hill-climbs (a, b) in
