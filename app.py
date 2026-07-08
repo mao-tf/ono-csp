@@ -449,8 +449,8 @@ with tab_step1:
         source_badge(src2)
 
         _KIND_LABEL = {
-            "b_contact": "b-stack",
-            "a_contact": "a-stack",
+            "b_contact": "HB (b-stack)",
+            "a_contact": "PS (a-stack)",
             "local_min": "local min",
         }
         _KIND_COLOR = {
@@ -730,8 +730,9 @@ with tab_step1:
 
         st.caption(
             "step1.csv alone doesn't record which structural branch "
-            "(a-stack / b-stack / local min) each hill-climb point "
-            "belongs to. This is recovered directly from the data: at "
+            "(HB / PS / local min, i.e. a-stack / b-stack / local min) each "
+            "hill-climb point belongs to. This is recovered directly from "
+            "the data: at "
             "each alpha, the visited (a, b) points are treated as a 2D "
             "energy grid, and its local minima *are* the converged "
             "branches (a DFT hill-climb only ever stops at one). "
@@ -1989,10 +1990,10 @@ with tab_transfer:
     st.caption(
         "Transfer integrals along the Fig. 2(b) branches (A2=0, z=0 at "
         "each alpha): run tcal_csv.py with one init_params.csv row per "
-        "(a, b, theta) point from Tab 2's a-stack/b-stack branches, then "
-        "combine init_params.csv with result.txt's J columns (same row "
-        "order) into one CSV. Expected columns: alpha (or theta), J_t, "
-        "J_p, and optionally kind (e.g. a_stack/b_stack) to color "
+        "(a, b, theta) point from Tab 2's HB/PS (a-stack/b-stack) branches, "
+        "then combine init_params.csv with result.txt's J columns (same "
+        "row order) into one CSV. Expected columns: alpha (or theta), J_t, "
+        "J_p, and optionally kind (e.g. HB/PS) to color "
         "separate branches, and E (E_intra(8), kcal/mol) for the upper "
         "total-energy panel -- plotted on its own axis since its scale "
         "(kcal/mol) isn't comparable to J (meV). Click a J_t/J_p point "

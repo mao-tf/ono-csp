@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import minimum_filter
 
-KIND_LABEL = {"b_contact": "b-stack", "a_contact": "a-stack", "local_min": "local min"}
+KIND_LABEL = {"b_contact": "HB (b-stack)", "a_contact": "PS (a-stack)", "local_min": "local min"}
 KIND_COLOR = {"b_contact": "#1f77b4", "a_contact": "#d62728", "local_min": "#2ca02c"}
 _KIND_SWAP = {"b_contact": "a_contact", "a_contact": "b_contact", "local_min": "local_min"}
 
