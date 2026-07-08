@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
@@ -70,7 +71,9 @@ st.caption(
 # ══════════════════════════════════════════════════════════
 #  Shared helpers
 # ══════════════════════════════════════════════════════════
-def load_results_csv(key: str, sample_file: str) -> tuple[Optional[pd.DataFrame], str]:
+def load_results_csv(
+    key: str, sample_file: str, label: Optional[str] = None,
+) -> tuple[Optional[pd.DataFrame], str]:
     """Results data source: user-dropped CSV first, bundled sample otherwise.
 
     Returns (df, source) where source is "uploaded", "sample", or "" when
@@ -78,7 +81,7 @@ def load_results_csv(key: str, sample_file: str) -> tuple[Optional[pd.DataFrame]
     from spec.md "実行方式".
     """
     uploaded = st.file_uploader(
-        "Drop your results CSV here (a precomputed sample is shown until then)",
+        label or "Drop your results CSV here (a precomputed sample is shown until then)",
         type="csv", key=key,
     )
     if uploaded is not None:
@@ -979,7 +982,7 @@ with tab_step2:
                         fig5b.add_trace(go.Scatter(
                             x=min_rows["x"], y=min_rows["y"], mode="markers",
                             name="local min", showlegend=False,
-                            marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
+                            marker=dict(symbol="square-open", size=marker_px + 6, color="gold", line=dict(width=2)),
                             hovertemplate="x=%{x:.1f}<br>y=%{y:.1f}<extra>local min</extra>",
                         ))
                         fig5b.update_layout(
@@ -1101,6 +1104,25 @@ with tab_step2:
                 "map below takes the minimum E recorded at each grid point. "
                 "Click a point for its T-shaped dimer at that twist/shift."
             )
+            if src == "sample":
+                st.info(
+                    "This sample is Ono's real naphthalene data (a, b fixed "
+                    "at the vdW-derived value, single-point energy at every "
+                    "A2/Rt grid point — the Fig. 7(c) method above). "
+                    "Reproducing the *rest* of the paper's Fig. 7 pipeline "
+                    "is more involved and isn't fully wired up in this GUI "
+                    "yet: from a map like this, Fig. 7(d) narrows to the "
+                    "promising A2 range (paper: 0-12°) and, for each A2, "
+                    "picks the Rt where E is lowest; at *those* (A2, Rt) "
+                    "pairs only, (a, b) is then re-optimized by hill-climbing "
+                    "(a separate, denser CSV — not this sample); finally the "
+                    "interlayer energy Eint(near) is computed on top of that "
+                    "re-optimized intralayer structure (Tab 4's twist "
+                    "sub-tab) and added to Eintra(6) to get the Fig. 7(d) "
+                    "total. Tab 4 twist's sample below is that last "
+                    "interlayer piece — on its own it is not yet the full "
+                    "Fig. 7(d) total energy."
+                )
             cols_lower_t = {c.lower(): c for c in df.columns}
             need = {"a2", "rt", "e"}
             if not need <= set(cols_lower_t):
@@ -1115,8 +1137,6 @@ with tab_step2:
                 df_conv = df.loc[df.groupby([a2c, rtc])[ec].idxmin()].reset_index(drop=True)
                 col_twist, col_twist3d = st.columns([2, 1])
                 with col_twist:
-                    n_side_t = max(1, int(round(len(df_conv) ** 0.5)))
-                    marker_px_t = max(4, 500 / n_side_t)
                     pivot_t = df_conv.pivot(index=rtc, columns=a2c, values=ec)
                     grid_t = pivot_t.values
                     if grid_t.shape[0] >= 5 and grid_t.shape[1] >= 5:
@@ -1127,20 +1147,19 @@ with tab_step2:
                     mi, mj = np.where(is_min_t)
                     min_rt = pivot_t.index.to_numpy()[mi]
                     min_a2 = pivot_t.columns.to_numpy()[mj]
-                    min_pairs_t = set(zip(min_a2, min_rt))
-                    min_mask_t = [(a2v, rtv) in min_pairs_t for a2v, rtv in zip(df_conv[a2c], df_conv[rtc])]
-                    figT = go.Figure()
-                    figT.add_trace(go.Scatter(
-                        x=df_conv[a2c], y=df_conv[rtc], mode="markers",
-                        marker=dict(symbol="square", size=marker_px_t, color=df_conv[ec],
-                                    colorscale="RdBu_r", colorbar=dict(title="E_intra(6)")),
-                        showlegend=False,
-                        hovertemplate="A2=%{x}<br>Rt=%{y}<br>E=%{marker.color:.2f}<extra></extra>",
+                    # go.Heatmap (not scaled scatter markers) tiles the grid
+                    # exactly regardless of how uneven the A2/Rt axis spacing
+                    # or grid shape is -- fixed-pixel square markers left
+                    # visible gaps whenever the grid wasn't square.
+                    figT = go.Figure(go.Heatmap(
+                        x=pivot_t.columns, y=pivot_t.index, z=grid_t,
+                        colorscale="RdBu_r", colorbar=dict(title="E_intra(6)"),
+                        hovertemplate="A2=%{x}<br>Rt=%{y}<br>E=%{z:.2f}<extra></extra>",
                     ))
                     figT.add_trace(go.Scatter(
-                        x=df_conv.loc[min_mask_t, a2c], y=df_conv.loc[min_mask_t, rtc], mode="markers",
+                        x=min_a2, y=min_rt, mode="markers",
                         showlegend=False,
-                        marker=dict(symbol="square-open", size=marker_px_t + 6, color="black", line=dict(width=2)),
+                        marker=dict(symbol="square-open", size=14, color="gold", line=dict(width=2)),
                         hovertemplate="A2=%{x}<br>Rt=%{y}<extra>local min</extra>",
                     ))
                     figT.update_layout(
@@ -1168,7 +1187,7 @@ with tab_step2:
                                 "theta": float(r[thc]) if thc else _twist_theta,
                                 "label": f"clicked: A2={r[a2c]} Rt={r[rtc]} E={r[ec]:.2f}",
                             }
-                    st.caption(f"{sum(min_mask_t)} local minima marked (black squares) out of {len(df_conv)} grid points.")
+                    st.caption(f"{len(min_a2)} local minima marked (black squares) out of {len(df_conv)} grid points.")
                     with st.expander("Converged (a,b) at each (A2,Rt) grid point"):
                         st.dataframe(df_conv, width="stretch")
                 with col_twist3d:
@@ -1315,7 +1334,7 @@ with tab_step3:
                 fig3.add_trace(go.Scatter(
                     x=min_ra, y=min_rb, mode="markers", name="local min",
                     showlegend=False,  # explained in the caption below instead
-                    marker=dict(symbol="square-open", size=marker_px + 6, color="black", line=dict(width=2)),
+                    marker=dict(symbol="square-open", size=marker_px + 6, color="gold", line=dict(width=2)),
                     hovertemplate="Ra=%{x}<br>Rb=%{y}<extra>local min</extra>",
                 ))
                 fig3.update_layout(
@@ -1448,6 +1467,158 @@ with tab_step3:
             )
 
     with sub_twist3:
+        st.subheader("vdW pre-scan — runs in this GUI")
+        st.caption(
+            "Same rigid-sphere interlayer contact model as Tab 4 para's vdW "
+            "pre-scan, but with the twist torsion A2 applied to both "
+            "intralayer clusters (Rp is implicitly 0 -- glide symmetric, "
+            "matching step3_twist.py's a, b, theta, Rt, A2 parameter set, "
+            "no separate Rp). Click a point (or a marked local minimum) to "
+            "preview the two-layer structure and download it as a starting "
+            "point for the DFT step below."
+        )
+        mol3t = st.session_state.get("molecule")
+        s4a_current = st.session_state.get("s4a_current") or {}
+        c1t, c2t, c3t = st.columns(3)
+        s3t_a = c1t.number_input("a (Å)", value=float(s4a_current.get("a", _twist_a)), key="s3twist_a")
+        s3t_b = c2t.number_input("b (Å)", value=float(s4a_current.get("b", _twist_b)), key="s3twist_b")
+        s3t_theta = c3t.number_input(
+            "theta (deg, from Step 1)",
+            value=float(s4a_current.get("theta", _twist_theta)), key="s3twist_theta",
+        )
+        c4t, c5t = st.columns(2)
+        s3t_rt = c4t.number_input(
+            "Rt (Å, T-contact long-axis shift)",
+            value=float(s4a_current.get("rt", 0.0)), step=0.1, key="s3twist_rt",
+        )
+        s3t_a2 = c5t.number_input(
+            "A2 (deg, twist torsion, from Tab 3 twist)",
+            value=float(s4a_current.get("a2", 0.0)), step=1.0, key="s3twist_a2",
+        )
+
+        if mol3t is None:
+            st.info("Select a molecule in Tab 1 first.")
+        elif st.button(f"Run interlayer vdW scan ({mol3t.name})", key="s3twist_run"):
+            with st.spinner("Scanning..."):
+                df_vdw_t = interlayer_vdw_scan(
+                    mol3t, a=s3t_a, b=s3t_b, theta=s3t_theta, Rt=s3t_rt, Rp=0.0, A2=s3t_a2,
+                    radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                )
+            st.session_state["s3twist_df"] = df_vdw_t
+            st.session_state["s3twist_params"] = {
+                "a": s3t_a, "b": s3t_b, "theta": s3t_theta, "Rt": s3t_rt, "A2": s3t_a2,
+            }
+
+        df_vdw_t = st.session_state.get("s3twist_df")
+        params3t = st.session_state.get("s3twist_params")
+        if df_vdw_t is not None and params3t is not None:
+            if st.button("Clear vdW scan results", key="s3twist_clear"):
+                for k in ("s3twist_df", "s3twist_params", "s3twist_current"):
+                    st.session_state.pop(k, None)
+                st.rerun()
+
+            col_mapt, col_3dt = st.columns([2, 1])
+            with col_mapt:
+                value_choice_t = st.radio(
+                    "Color by", ["z (interlayer distance)", "V (unit cell volume)"],
+                    horizontal=True, key="s3twist_valchoice",
+                )
+                val_col_t = "z" if value_choice_t.startswith("z") else "V"
+                pivot_vt = df_vdw_t.pivot(index="Rb", columns="Ra", values=val_col_t)
+
+                from scipy.ndimage import minimum_filter
+                grid_vt = pivot_vt.values
+                is_min_vt = (grid_vt == minimum_filter(grid_vt, size=5)) & np.isfinite(grid_vt)
+                min_rb_idx_t, min_ra_idx_t = np.where(is_min_vt)
+                min_ra_t = pivot_vt.columns.to_numpy()[min_ra_idx_t]
+                min_rb_t = pivot_vt.index.to_numpy()[min_rb_idx_t]
+
+                n_ra_cells_t = max(len(pivot_vt.columns), 1)
+                n_rb_cells_t = max(len(pivot_vt.index), 1)
+                marker_px_vt = max(3, 650 / max(n_ra_cells_t, n_rb_cells_t))
+                figVT = go.Figure()
+                figVT.add_trace(go.Scatter(
+                    x=df_vdw_t["Ra"], y=df_vdw_t["Rb"], mode="markers", name=val_col_t,
+                    showlegend=False,
+                    marker=dict(
+                        symbol="square", size=marker_px_vt,
+                        color=df_vdw_t[val_col_t], colorscale="RdBu_r",
+                        colorbar=dict(title=val_col_t),
+                    ),
+                    hovertemplate="Ra=%{x}<br>Rb=%{y}<br>" + val_col_t + "=%{marker.color:.3f}<extra></extra>",
+                ))
+                figVT.add_trace(go.Scatter(
+                    x=min_ra_t, y=min_rb_t, mode="markers", name="local min",
+                    showlegend=False,
+                    marker=dict(symbol="square-open", size=marker_px_vt + 6, color="gold", line=dict(width=2)),
+                    hovertemplate="Ra=%{x}<br>Rb=%{y}<extra>local min</extra>",
+                ))
+                figVT.update_layout(
+                    xaxis_title="Ra (Å, layer offset along a)",
+                    yaxis_title="Rb (Å, layer offset along b)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                )
+                figVT.update_yaxes(scaleanchor="x", scaleratio=1)
+                eventVT = st.plotly_chart(
+                    figVT, width="stretch", on_select="rerun", key="s3twist_fig"
+                )
+                ptsVT = eventVT.selection.points if (eventVT and eventVT.selection) else []
+                if ptsVT:
+                    p0t = ptsVT[0]
+                    ra_sel_t, rb_sel_t = p0t.get("x"), p0t.get("y")
+                    if ra_sel_t is not None and rb_sel_t is not None:
+                        ident_t = (round(float(ra_sel_t), 1), round(float(rb_sel_t), 1))
+                        if st.session_state.get("s3twist_fig_prev") != ident_t:
+                            row_t = df_vdw_t[
+                                np.isclose(df_vdw_t["Ra"], ident_t[0]) & np.isclose(df_vdw_t["Rb"], ident_t[1])
+                            ]
+                            if len(row_t):
+                                rr = row_t.iloc[0]
+                                st.session_state["s3twist_current"] = {
+                                    "cx": float(rr["Ra"]), "cy": float(rr["Rb"]), "cz": float(rr["cz"]),
+                                    "label": f"clicked: cx={rr['Ra']} cy={rr['Rb']} cz={rr['cz']:.2f} V={rr['V']:.1f}",
+                                }
+                                st.session_state["s3twist_fig_prev"] = ident_t
+
+                st.caption(f"{len(min_ra_t)} local minima marked (gold squares) out of {len(df_vdw_t)} grid points.")
+
+            with col_3dt:
+                st.markdown("**Structure preview**")
+                current3t = st.session_state.get("s3twist_current")
+                if current3t is None and len(df_vdw_t):
+                    best_t3 = df_vdw_t.loc[df_vdw_t["z"].idxmin()]
+                    current3t = {
+                        "cx": float(best_t3["Ra"]), "cy": float(best_t3["Rb"]), "cz": float(best_t3["cz"]),
+                        "label": f"default (min z): cx={best_t3['Ra']} cy={best_t3['Rb']} cz={best_t3['cz']:.2f}",
+                    }
+                if mol3t is not None and current3t is not None:
+                    st.caption(current3t["label"])
+                    syms3t, coords3t = bilayer_preview(
+                        mol3t, params3t["a"], params3t["b"], params3t["theta"],
+                        params3t["Rt"], 0.0,
+                        current3t["cx"], current3t["cy"], current3t["cz"],
+                        A2=params3t["A2"],
+                        radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                    )
+                    render_molecule_3d(
+                        syms3t, coords3t,
+                        f"{mol3t.name} twisted bilayer cx={current3t['cx']} "
+                        f"cy={current3t['cy']} cz={current3t['cz']:.2f}",
+                        key_suffix="s3twist", style_key="s3twist_style",
+                    )
+                    st.download_button(
+                        "Download step3_twist_init_params.csv (1 row for the DFT step below)",
+                        data=pd.DataFrame([{
+                            "a": params3t["a"], "b": params3t["b"], "theta": params3t["theta"],
+                            "Rt": params3t["Rt"], "A2": params3t["A2"],
+                            "cx": current3t["cx"], "cy": current3t["cy"], "cz": current3t["cz"],
+                            "status": "NotYet",
+                        }]).to_csv(index=False),
+                        file_name="step3_twist_init_params.csv", mime="text/csv",
+                        key="dl_s3twist_init",
+                    )
+
+        st.divider()
         st.subheader("How to run (CLI)")
         cli_howto(
             what=(
@@ -1469,14 +1640,206 @@ with tab_step3:
             output="`<auto-dir>/step3_twist.csv` — columns `cx, cy, cz, ..., E`.",
         )
         st.divider()
-        st.subheader("Results  (step3_twist.csv)")
-        df, src = load_results_csv("s4b_results", "step3_twist.csv")
+        st.subheader("Fig. 7(d)-style: Total E vs theta_twist (A2)")
+        st.caption(
+            "The paper's actual Fig. 7(d): for each theta_twist (A2) in the "
+            "promising range narrowed down from Tab 3 twist's Fig. 7(c) map, "
+            "(a, b, Rt) is re-optimized by hill-climbing (a separate, denser "
+            "CSV from Tab 3 twist's one-point-per-grid-cell CSV), then the "
+            "interlayer energy Eint(near) is computed on top of that "
+            "structure. Total E = Eintra(6) + Eint(near), taking the minimum "
+            "of each at every A2. **Needs two CSVs, one in each box below:** "
+            "(1) the re-optimized intralayer grid -- columns `A2, Rt, a, b, "
+            "E` (theta optional); (2) the interlayer scan, i.e. "
+            "step3_twist.csv -- columns `A2, cx, cy, cz, E`."
+        )
+        df_intra_d, src_intra_d = load_results_csv(
+            "s4d_results", "step2_twist_refined.csv",
+            label="1) Re-optimized intralayer grid (A2, Rt, a, b, E) -- "
+                  "sample shown until you drop your own",
+        )
+        df, src = load_results_csv(
+            "s4b_results", "step3_twist.csv",
+            label="2) Interlayer scan, step3_twist.csv (A2, cx, cy, cz, E) -- "
+                  "sample shown until you drop your own",
+        )
+        if df_intra_d is not None and df is not None:
+            if src == "sample" or src_intra_d == "sample":
+                st.info(
+                    "This sample is Ono's real naphthalene data (both CSVs "
+                    "share the same re-optimized (A2, Rt, a, b) per point, "
+                    "confirmed by joining them here). Select naphthalene in "
+                    "Tab 1 for the 3D preview to match the plotted lattice "
+                    "constants."
+                )
+            cl_id = {c.lower(): c for c in df_intra_d.columns}
+            cl_er = {c.lower(): c for c in df.columns}
+            need_id = {"a2", "e", "a", "b", "rt"}
+            need_er = {"a2", "e"}
+            if not (need_id <= set(cl_id) and need_er <= set(cl_er)):
+                st.warning(
+                    f"Expected A2, Rt, a, b, E in the intralayer CSV (got "
+                    f"{list(df_intra_d.columns)}) and A2, E in step3_twist.csv "
+                    f"(got {list(df.columns)})."
+                )
+            else:
+                a2_id, e_id, a_id, b_id, rt_id = (
+                    cl_id["a2"], cl_id["e"], cl_id["a"], cl_id["b"], cl_id["rt"]
+                )
+                a2_er, e_er = cl_er["a2"], cl_er["e"]
+                best_intra = df_intra_d.loc[df_intra_d.groupby(a2_id)[e_id].idxmin()].set_index(a2_id)
+                best_inter = df.loc[df.groupby(a2_er)[e_er].idxmin()].set_index(a2_er)[e_er]
+                common_a2 = sorted(set(best_intra.index) & set(best_inter.index))
+                if not common_a2:
+                    st.warning("No shared A2 values between the two CSVs -- can't join.")
+                else:
+                    df_total = pd.DataFrame({
+                        "A2": common_a2,
+                        "Eintra": [float(best_intra.loc[a2, e_id]) for a2 in common_a2],
+                        "Einter": [float(best_inter.loc[a2]) for a2 in common_a2],
+                        "a": [float(best_intra.loc[a2, a_id]) for a2 in common_a2],
+                        "b": [float(best_intra.loc[a2, b_id]) for a2 in common_a2],
+                        "Rt": [float(best_intra.loc[a2, rt_id]) for a2 in common_a2],
+                    })
+                    thc_d = cl_id.get("theta")
+                    df_total["theta"] = (
+                        [float(best_intra.loc[a2, thc_d]) for a2 in common_a2] if thc_d
+                        else _twist_theta
+                    )
+                    df_total["Total"] = df_total["Eintra"] + df_total["Einter"]
+                    # Plot every curve relative to its own A2=0 (untwisted)
+                    # value -- the paper's Fig. 7(d) shows stabilization
+                    # *from* the untwisted reference, not absolute E, and the
+                    # three quantities' absolute offsets aren't otherwise
+                    # comparable on one axis.
+                    ref_row = df_total[np.isclose(df_total["A2"], 0.0)]
+                    if len(ref_row):
+                        ref = ref_row.iloc[0]
+                    else:
+                        ref = df_total.iloc[(df_total["A2"] - 0.0).abs().argmin()]
+                    for col in ("Total", "Eintra", "Einter"):
+                        df_total[f"{col}_rel"] = df_total[col] - ref[col]
+                    col_d_plot, col_d_3d = st.columns([2, 1])
+                    with col_d_plot:
+                        figD = go.Figure()
+                        figD.add_trace(go.Scatter(
+                            x=df_total["A2"], y=df_total["Total_rel"], mode="lines+markers",
+                            name="Total (Eintra+Einter)", line=dict(color="gold", width=3),
+                        ))
+                        figD.add_trace(go.Scatter(
+                            x=df_total["A2"], y=df_total["Eintra_rel"], mode="lines+markers",
+                            name="Eintra(6)", line=dict(dash="dot"),
+                        ))
+                        figD.add_trace(go.Scatter(
+                            x=df_total["A2"], y=df_total["Einter_rel"], mode="lines+markers",
+                            name="Eint(near)", line=dict(dash="dash"),
+                        ))
+                        figD.update_layout(
+                            xaxis_title="theta_twist / A2 (deg)",
+                            yaxis_title="E relative to A2=0 (kcal/mol)",
+                            margin=dict(l=20, r=20, t=30, b=20),
+                        )
+                        event_d = st.plotly_chart(figD, width="stretch", on_select="rerun", key="s4d_chart")
+                        pts_d = event_d.selection.points if (event_d and event_d.selection) else []
+                        if pts_d:
+                            x_sel_d = pts_d[0].get("x")
+                            if x_sel_d is not None:
+                                match_d = df_total[np.isclose(df_total["A2"], x_sel_d)]
+                                if len(match_d):
+                                    r = match_d.iloc[0]
+                                    st.session_state["s4d_current"] = {
+                                        "a2": float(r["A2"]), "rt": float(r["Rt"]),
+                                        "a": float(r["a"]), "b": float(r["b"]),
+                                        "theta": float(r["theta"]),
+                                        "total": float(r["Total_rel"]), "eintra": float(r["Eintra_rel"]),
+                                        "einter": float(r["Einter_rel"]),
+                                        "label": f"clicked: A2={r['A2']} Rt={r['Rt']}",
+                                    }
+                        min_row_d = df_total.loc[df_total["Total_rel"].idxmin()]
+                        st.caption(
+                            f"Minimum Total E at A2={min_row_d['A2']:.0f} deg "
+                            f"(ΔTotal={min_row_d['Total_rel']:.2f} kcal/mol "
+                            "relative to A2=0)."
+                        )
+                        with st.expander("Data table"):
+                            st.dataframe(df_total, width="stretch")
+                    with col_d_3d:
+                        st.markdown("**Structure preview**")
+                        if mol2 is None:
+                            st.caption("Select a molecule in Tab 1.")
+                        else:
+                            current_d = st.session_state.get("s4d_current")
+                            if current_d is None:
+                                best_d = df_total.loc[df_total["Total_rel"].idxmin()]
+                                current_d = {
+                                    "a2": float(best_d["A2"]), "rt": float(best_d["Rt"]),
+                                    "a": float(best_d["a"]), "b": float(best_d["b"]),
+                                    "theta": float(best_d["theta"]),
+                                    "total": float(best_d["Total_rel"]), "eintra": float(best_d["Eintra_rel"]),
+                                    "einter": float(best_d["Einter_rel"]),
+                                    "label": f"default (min Total E): A2={best_d['A2']} Rt={best_d['Rt']}",
+                                }
+                                st.session_state["s4d_current"] = current_d
+                            st.caption(current_d["label"])
+                            st.metric("ΔTotal E vs A2=0 (kcal/mol)", f"{current_d['total']:.2f}")
+                            st.caption(
+                                f"ΔEintra(6)={current_d['eintra']:.2f}, "
+                                f"ΔEint(near)={current_d['einter']:.2f} "
+                                "(all relative to A2=0)"
+                            )
+                            c_i_d, c_j_d = dimer(
+                                mol2, "t", current_d["a"], current_d["b"], current_d["theta"],
+                                A2=current_d["a2"], z=current_d["rt"],
+                            )
+                            render_molecule_3d(
+                                list(mol2.symbols) * 2, np.vstack([c_i_d, c_j_d]),
+                                f"{mol2.name} twist dimer A2={current_d['a2']} Rt={current_d['rt']}",
+                                key_suffix="s4d", style_key="s4d_style",
+                            )
+
+        st.divider()
+        st.subheader("Interlayer scan detail  (step3_twist.csv)")
         if df is not None:
             source_badge(src)
+            cols_lower_detail = {c.lower(): c for c in df.columns}
+            a2_detail = cols_lower_detail.get("a2")
+            e_detail = cols_lower_detail.get("e")
+            if a2_detail:
+                a2_values_detail = sorted(df[a2_detail].unique())
+                default_a2_detail = (
+                    df.loc[df[e_detail].idxmin(), a2_detail] if e_detail else a2_values_detail[0]
+                )
+                sel_a2_detail = st.selectbox(
+                    "theta_twist / A2 (deg) -- each A2 has its own hill-climb "
+                    "search, so pick one to view its own (cy, cz) landscape",
+                    a2_values_detail,
+                    index=(
+                        a2_values_detail.index(default_a2_detail)
+                        if default_a2_detail in a2_values_detail else 0
+                    ),
+                    key="s4b_detail_a2",
+                )
+                df_detail = df[df[a2_detail] == sel_a2_detail]
+                st.caption(
+                    f"The (cy, cz) interlayer c-vector hill-climb search at "
+                    f"this single A2={sel_a2_detail} (cx is fixed at 0 for "
+                    "this twisted packing, so it isn't a useful map axis). "
+                    "Each A2 explores a different (cy, cz) region since "
+                    "(a, b, Rt) also change with A2 -- overlaying every A2 "
+                    "on one map would mix unrelated hill-climb trajectories "
+                    "together."
+                )
+            else:
+                df_detail = df
+                st.caption(
+                    "The raw (cy, cz) interlayer c-vector scan (cx is fixed "
+                    "at 0 for this twisted packing, so it isn't a useful map "
+                    "axis)."
+                )
             heatmap_section(
-                df, "s4b_map",
-                x_candidates=["cx", "x"],
-                y_candidates=["cy", "y"],
+                df_detail, "s4b_map",
+                x_candidates=["cy", "x"],
+                y_candidates=["cz", "y"],
                 val_candidates=["e"],
                 val_label="E (kcal/mol)",
             )
@@ -1567,7 +1930,12 @@ with tab_transfer:
         "combine init_params.csv with result.txt's J columns (same row "
         "order) into one CSV. Expected columns: alpha (or theta), J_t, "
         "J_p, and optionally kind (e.g. a_stack/b_stack) to color "
-        "separate branches."
+        "separate branches, and E (E_intra(8), kcal/mol) for the upper "
+        "total-energy panel -- plotted on its own axis since its scale "
+        "(kcal/mol) isn't comparable to J (meV). Click a J_t/J_p point "
+        "for its 2-molecule dimer, or a Total point for the full "
+        "9-molecule cluster; the clicked point's own value is always "
+        "shown as text next to the structure."
     )
     df_b, src_b = load_results_csv("s5b_results", "transfer_integrals_alpha.csv")
     if df_b is not None:
@@ -1580,25 +1948,136 @@ with tab_transfer:
             xb = cols_lower_b[xcand_b[0]]
             jtb, jpb = cols_lower_b["j_t"], cols_lower_b["j_p"]
             kindb = cols_lower_b.get("kind")
-            figb = go.Figure()
-            groups_b = df_b.groupby(kindb) if kindb else [(None, df_b)]
-            for kind, grp in groups_b:
-                grp = grp.sort_values(xb)
-                suffix = f" ({kind})" if kind is not None else ""
-                figb.add_trace(go.Scatter(
-                    x=grp[xb], y=grp[jtb], mode="lines+markers", name=f"J_t{suffix}",
-                ))
-                figb.add_trace(go.Scatter(
-                    x=grp[xb], y=grp[jpb], mode="lines+markers", name=f"J_p{suffix}",
-                    line=dict(dash="dash"),
-                ))
-            figb.update_layout(
-                xaxis_title=xb, yaxis_title="J (meV)",
-                margin=dict(l=20, r=20, t=30, b=20),
-            )
-            st.plotly_chart(figb, width="stretch")
-            with st.expander("Data table"):
-                st.dataframe(df_b, width="stretch")
+            ab_ = cols_lower_b.get("a")
+            bb_ = cols_lower_b.get("b")
+            eb_ = cols_lower_b.get("e")
+            col_b_plot, col_b_3d = st.columns([2, 1])
+            with col_b_plot:
+                has_total = eb_ is not None
+                if has_total:
+                    figb = make_subplots(
+                        rows=2, cols=1, shared_xaxes=True, row_heights=[0.3, 0.7],
+                        vertical_spacing=0.06,
+                    )
+                else:
+                    figb = go.Figure()
+                trace_info_b = []  # ("total"/"t"/"p", kind), aligned with trace order
+                groups_b = list(df_b.groupby(kindb)) if kindb else [(None, df_b)]
+                for kind, grp in groups_b:
+                    grp = grp.sort_values(xb)
+                    suffix = f" ({kind})" if kind is not None else ""
+                    if has_total:
+                        figb.add_trace(go.Scatter(
+                            x=grp[xb], y=grp[eb_], mode="lines+markers", name=f"Total{suffix}",
+                            line=dict(dash="dot"),
+                        ), row=1, col=1)
+                        trace_info_b.append(("total", kind))
+                        figb.add_trace(go.Scatter(
+                            x=grp[xb], y=grp[jtb], mode="lines+markers", name=f"J_t{suffix}",
+                        ), row=2, col=1)
+                        trace_info_b.append(("t", kind))
+                        figb.add_trace(go.Scatter(
+                            x=grp[xb], y=grp[jpb], mode="lines+markers", name=f"J_p{suffix}",
+                            line=dict(dash="dash"),
+                        ), row=2, col=1)
+                        trace_info_b.append(("p", kind))
+                    else:
+                        figb.add_trace(go.Scatter(
+                            x=grp[xb], y=grp[jtb], mode="lines+markers", name=f"J_t{suffix}",
+                        ))
+                        trace_info_b.append(("t", kind))
+                        figb.add_trace(go.Scatter(
+                            x=grp[xb], y=grp[jpb], mode="lines+markers", name=f"J_p{suffix}",
+                            line=dict(dash="dash"),
+                        ))
+                        trace_info_b.append(("p", kind))
+                if has_total:
+                    figb.update_yaxes(title_text="E_intra(8) (kcal/mol)", row=1, col=1)
+                    figb.update_yaxes(title_text="J (meV)", row=2, col=1)
+                    figb.update_xaxes(title_text=xb, row=2, col=1)
+                    figb.update_layout(margin=dict(l=20, r=20, t=30, b=20))
+                else:
+                    figb.update_layout(
+                        xaxis_title=xb, yaxis_title="J (meV)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                    )
+                event_b = st.plotly_chart(figb, width="stretch", on_select="rerun", key="s5b_chart")
+                pts_b = event_b.selection.points if (event_b and event_b.selection) else []
+                if pts_b and ab_ and bb_:
+                    p0b = pts_b[0]
+                    x_sel_b, curve_num_b = p0b.get("x"), p0b.get("curve_number", 0)
+                    if x_sel_b is not None and 0 <= curve_num_b < len(trace_info_b):
+                        contact_sel, kind_sel = trace_info_b[curve_num_b]
+                        mask_b = np.isclose(df_b[xb], x_sel_b)
+                        if kindb:
+                            mask_b &= (df_b[kindb] == kind_sel)
+                        match_b = df_b[mask_b]
+                        if len(match_b):
+                            r = match_b.iloc[0]
+                            a_r, b_r = float(r[ab_]), float(r[bb_])
+                            kind_label = f" ({kind_sel})" if kind_sel is not None else ""
+                            if contact_sel == "total":
+                                st.session_state["s5b_current"] = {
+                                    "kind": "total", "a": a_r, "b": b_r,
+                                    "theta": float(r[xb]),
+                                    "value": float(r[eb_]) if eb_ else None,
+                                    "value_label": "E_intra(8) (kcal/mol)",
+                                    "label": f"clicked: Total{kind_label} at alpha={r[xb]}",
+                                }
+                            else:
+                                # tcal_csv.py's own rule: the slipped-parallel
+                                # contact shifts along whichever of a/b is
+                                # shorter (p2 along a when b>a, else p1 along b).
+                                dimer_kind = "t" if contact_sel == "t" else ("p2" if b_r > a_r else "p1")
+                                jval = float(r[jtb]) if contact_sel == "t" else float(r[jpb])
+                                st.session_state["s5b_current"] = {
+                                    "kind": dimer_kind, "a": a_r, "b": b_r,
+                                    "theta": float(r[xb]),
+                                    "value": jval, "value_label": "J (meV)",
+                                    "label": (
+                                        f"clicked: {'J_t' if contact_sel == 't' else 'J_p'}"
+                                        f"{kind_label} at alpha={r[xb]}"
+                                    ),
+                                }
+                with st.expander("Data table"):
+                    st.dataframe(df_b, width="stretch")
+            with col_b_3d:
+                st.markdown("**Structure preview**")
+                if mol2 is None:
+                    st.caption("Select a molecule in Tab 1.")
+                elif not (ab_ and bb_):
+                    st.caption("Need `a`, `b` columns in the CSV for a 3D preview.")
+                else:
+                    current_b = st.session_state.get("s5b_current")
+                    if current_b is None and len(df_b):
+                        first_b = df_b.iloc[0]
+                        kind_label0 = f" ({first_b[kindb]})" if kindb else ""
+                        current_b = {
+                            "kind": "t", "a": float(first_b[ab_]), "b": float(first_b[bb_]),
+                            "theta": float(first_b[xb]),
+                            "value": float(first_b[jtb]), "value_label": "J (meV)",
+                            "label": f"default: J_t{kind_label0} at alpha={first_b[xb]}",
+                        }
+                        st.session_state["s5b_current"] = current_b
+                    st.caption(current_b["label"])
+                    if current_b.get("value") is not None:
+                        st.metric(current_b["value_label"], f"{current_b['value']:.2f}")
+                    if current_b["kind"] == "total":
+                        syms_b, coords_b = cluster9(mol2, current_b["a"], current_b["b"], current_b["theta"])
+                        render_molecule_3d(
+                            syms_b, coords_b,
+                            f"{mol2.name} cluster9 alpha={current_b['theta']}",
+                            key_suffix="s5b", style_key="s5b_style",
+                        )
+                    else:
+                        c_i_b, c_j_b = dimer(
+                            mol2, current_b["kind"], current_b["a"], current_b["b"], current_b["theta"],
+                        )
+                        render_molecule_3d(
+                            list(mol2.symbols) * 2, np.vstack([c_i_b, c_j_b]),
+                            f"{mol2.name} {current_b['kind']} dimer alpha={current_b['theta']}",
+                            key_suffix="s5b", style_key="s5b_style",
+                        )
 
     st.divider()
     st.subheader("Fig. 11(c)-style: J vs theta_incl")
@@ -1607,7 +2086,9 @@ with tab_transfer:
         "direction (Step 2 para's z / theta_incl, glide-symmetric so a "
         "single z per row is enough — the same z used in Tab 3's "
         "Et(z)/Ep(z) scan feeds tcal_csv.py's init_params.csv `z` "
-        "column). Expected columns: theta_incl (or z), J_t, J_p."
+        "column). Expected columns: theta_incl (or z), J_t, J_p, and "
+        "optionally a, b, theta (fixed at the Step 1 optimum) for the "
+        "3D structure preview on click."
     )
     df_c, src_c = load_results_csv("s5c_results", "transfer_integrals_thetaincl.csv")
     if df_c is not None:
@@ -1619,18 +2100,68 @@ with tab_transfer:
         else:
             xc_ = cols_lower_c[xcand_c[0]]
             jtc_, jpc_ = cols_lower_c["j_t"], cols_lower_c["j_p"]
+            ac_ = cols_lower_c.get("a")
+            bc_ = cols_lower_c.get("b")
+            thc_ = cols_lower_c.get("theta")
             grp_c = df_c.sort_values(xc_)
-            figc = go.Figure()
-            figc.add_trace(go.Scatter(
-                x=grp_c[xc_], y=grp_c[jtc_], mode="lines+markers", name="J_t (T-shaped)",
-            ))
-            figc.add_trace(go.Scatter(
-                x=grp_c[xc_], y=grp_c[jpc_], mode="lines+markers", name="J_p (slipped-parallel)",
-            ))
-            figc.update_layout(
-                xaxis_title=xc_, yaxis_title="J (meV)",
-                margin=dict(l=20, r=20, t=30, b=20),
-            )
-            st.plotly_chart(figc, width="stretch")
-            with st.expander("Data table"):
-                st.dataframe(df_c, width="stretch")
+            col_c_plot, col_c_3d = st.columns([2, 1])
+            with col_c_plot:
+                figc = go.Figure()
+                figc.add_trace(go.Scatter(
+                    x=grp_c[xc_], y=grp_c[jtc_], mode="lines+markers", name="J_t (T-shaped)",
+                ))
+                figc.add_trace(go.Scatter(
+                    x=grp_c[xc_], y=grp_c[jpc_], mode="lines+markers", name="J_p (slipped-parallel)",
+                ))
+                figc.update_layout(
+                    xaxis_title=xc_, yaxis_title="J (meV)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                )
+                event_c = st.plotly_chart(figc, width="stretch", on_select="rerun", key="s5c_chart")
+                pts_c = event_c.selection.points if (event_c and event_c.selection) else []
+                if pts_c and ac_ and bc_ and thc_:
+                    p0c = pts_c[0]
+                    x_sel_c, curve_num_c = p0c.get("x"), p0c.get("curve_number", 0)
+                    if x_sel_c is not None:
+                        match_c = df_c[np.isclose(df_c[xc_], x_sel_c)]
+                        if len(match_c):
+                            r = match_c.iloc[0]
+                            a_r, b_r = float(r[ac_]), float(r[bc_])
+                            contact_sel = "t" if curve_num_c == 0 else "p"
+                            dimer_kind = "t" if contact_sel == "t" else ("p2" if b_r > a_r else "p1")
+                            st.session_state["s5c_current"] = {
+                                "kind": dimer_kind, "a": a_r, "b": b_r,
+                                "theta": float(r[thc_]), "z": float(x_sel_c),
+                                "label": (
+                                    f"clicked: {'J_t' if contact_sel == 't' else 'J_p'} "
+                                    f"at {xc_}={x_sel_c}"
+                                ),
+                            }
+                with st.expander("Data table"):
+                    st.dataframe(df_c, width="stretch")
+            with col_c_3d:
+                st.markdown("**Structure preview**")
+                if mol2 is None:
+                    st.caption("Select a molecule in Tab 1.")
+                elif not (ac_ and bc_ and thc_):
+                    st.caption("Need `a`, `b`, `theta` columns in the CSV for a 3D preview.")
+                else:
+                    current_c = st.session_state.get("s5c_current")
+                    if current_c is None and len(grp_c):
+                        first_c = grp_c.iloc[0]
+                        current_c = {
+                            "kind": "t", "a": float(first_c[ac_]), "b": float(first_c[bc_]),
+                            "theta": float(first_c[thc_]), "z": float(first_c[xc_]),
+                            "label": f"default: J_t at {xc_}={first_c[xc_]}",
+                        }
+                        st.session_state["s5c_current"] = current_c
+                    st.caption(current_c["label"])
+                    c_i_c, c_j_c = dimer(
+                        mol2, current_c["kind"], current_c["a"], current_c["b"], current_c["theta"],
+                        z=current_c["z"],
+                    )
+                    render_molecule_3d(
+                        list(mol2.symbols) * 2, np.vstack([c_i_c, c_j_c]),
+                        f"{mol2.name} {current_c['kind']} dimer {xc_}={current_c['z']}",
+                        key_suffix="s5c", style_key="s5c_style",
+                    )

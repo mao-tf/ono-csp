@@ -83,10 +83,17 @@ def _z_max_for_shift(
 def interlayer_vdw_scan(
     mol: Molecule,
     a: float, b: float, theta: float, Rt: float, Rp: float,
+    A2: float = 0.0,
     radii_overrides: Optional[Mapping[str, float]] = None,
     ra_step: float = 0.1, rb_step: float = 0.1,
 ) -> pd.DataFrame:
     """Step 3 vdW pre-scan: V(Ra, Rb) map at fixed (a, b, theta, Rt, Rp).
+
+    `A2` is the twist torsion (Step 2 twist / Tab 3 twist's A2, 0 by default
+    for the untwisted para case) applied to every molecule in the two
+    intralayer clusters, so this same scan also covers the twisted (Type
+    III) packing at fixed Rp=0 (glide symmetric, matching step3_twist.py's
+    parameter set of a, b, theta, Rt, A2 with no separate Rp).
 
     Returns a DataFrame with columns Ra, Rb, z, V — one row per grid point,
     Ra in [-a/2, a/2] and Rb in [-b/2, b/2] at the given step (0.1 Å by
@@ -95,8 +102,8 @@ def interlayer_vdw_scan(
     mol_l = to_layer_frame(mol)
     radii = _effective_radii(mol_l, radii_overrides)
 
-    coords_p = place_in_layer(mol_l.coords, 0, 0, 0, 0.0, theta)
-    coords_t = place_in_layer(mol_l.coords, 0, 0, 0, 0.0, -theta)
+    coords_p = place_in_layer(mol_l.coords, 0, 0, 0, A2, theta)
+    coords_t = place_in_layer(mol_l.coords, 0, 0, 0, A2, -theta)
 
     a_vec = np.array([a, 0.0, 2 * Rt - Rp])
     b_vec = np.array([0.0, b, Rp])
@@ -151,16 +158,20 @@ def bilayer_preview(
     mol: Molecule,
     a: float, b: float, theta: float, Rt: float, Rp: float,
     cx: float, cy: float, cz: float,
+    A2: float = 0.0,
     radii_overrides: Optional[Mapping[str, float]] = None,
 ) -> tuple[list, np.ndarray]:
     """9-molecule underlayer cluster (pattern 1) + 1 overlayer molecule at
     (cx, cy, cz), for a 3D preview of one point from `interlayer_vdw_scan`
     (analogous to the paper's Fig. 6e "overlayer vs underlayer" view).
+
+    `A2`: see `interlayer_vdw_scan` -- the twist torsion, 0 for the
+    untwisted para case.
     """
     mol_l = to_layer_frame(mol)
     radii = _effective_radii(mol_l, radii_overrides)
-    coords_p = place_in_layer(mol_l.coords, 0, 0, 0, 0.0, theta)
-    coords_t = place_in_layer(mol_l.coords, 0, 0, 0, 0.0, -theta)
+    coords_p = place_in_layer(mol_l.coords, 0, 0, 0, A2, theta)
+    coords_t = place_in_layer(mol_l.coords, 0, 0, 0, A2, -theta)
 
     a_vec = np.array([a, 0.0, 2 * Rt - Rp])
     b_vec = np.array([0.0, b, Rp])
