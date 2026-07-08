@@ -235,6 +235,18 @@ your-working-dir/
     └── test_t/test_p.txt          # per-arrangement transfer integral
 ```
 
+Both of the above also reference a separate monomer directory
+(`CSP_MONOMER_DIR`) — not in Ono's own readmes, but worth showing since
+it's a common point of confusion (the lattice CSVs above have no atom
+coordinates; the monomer CSV is where those actually come from):
+
+```
+/path/to/monomer/         <- CSP_MONOMER_DIR points here
+├── pentacene.csv         # X, Y, Z, R columns -- download from Tab 1
+├── naphthalene.csv       # one CSV per molecule name you pass to --monomer-name
+└── ...
+```
+
 ### Getting a single-point energy instead of a hill-climb (Step 2 twist)
 
 `step2_twist.py`'s `get_opt_params_dict` normally hill-climbs (a, b) in

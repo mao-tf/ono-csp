@@ -238,6 +238,15 @@ _TREE_TCAL = """your-working-dir/
     ├── test_t/test_p*.log         # Gaussian16 outputs
     └── test_t/test_p.txt          # per-arrangement transfer integral"""
 
+# Not in Ono's own readmes (they only mention --monomer-name as a flag) --
+# added separately since CSP_MONOMER_DIR/what's actually inside it was a
+# real point of confusion (someone saw the 4-column lattice CSV and asked
+# where the atom coordinates were).
+_TREE_MONOMER = """/path/to/monomer/         <- CSP_MONOMER_DIR points here
+├── pentacene.csv         # X, Y, Z, R columns -- download from the picker above
+├── naphthalene.csv       # one CSV per molecule name you pass to --monomer-name
+└── ..."""
+
 
 def cli_howto(
     *,
@@ -275,6 +284,8 @@ def cli_howto(
     if tree:
         with st.expander("What the working directory (`--auto-dir`) looks like"):
             st.code(tree, language="text")
+            st.caption("...and the separate monomer directory (`CSP_MONOMER_DIR`) referenced above:")
+            st.code(_TREE_MONOMER, language="text")
 
 
 _SETUP_MONOMER_ENV = (
