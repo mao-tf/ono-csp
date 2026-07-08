@@ -70,6 +70,13 @@ Requires [Python](https://www.python.org/) 3.10+. Either way below gives
 you an isolated environment so this project's dependencies don't clash
 with anything else on your machine.
 
+**Have neither Python nor conda?** Just install
+[Miniconda](https://docs.conda.io/en/latest/miniconda.html) — its
+installer sets up a matching Python *and* conda together, so it's the one
+thing you need. Download the installer for your OS, run it, then open a
+**new** terminal window (so the install takes effect) before continuing
+with **With conda** below.
+
 **With conda** (install
 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) first if you
 don't have it):
