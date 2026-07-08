@@ -1,14 +1,16 @@
-With this workflow, we can calculate transfer integrals of arbitrary molecular arrangements with Gaussian16 calculations and existing programm.
-We first identify the molecular arrangements from the result files of stepwise optimization.
-Then we obtain molecular orbital data from Gaussian16 calculations and calculate transfer integrals utilizing Gaussian16 output files.    
+This workflow automates the calculation of transfer integrals for arbitrary molecular arrangements using Gaussian 16 and the existing tcal program.
+First, molecular arrangements are extracted from the output files of the stepwise optimization. Next, molecular orbital information is obtained from Gaussian 16 calculations, and transfer integrals are calculated from the Gaussian 16 output files.
+This workflow utilizes the tcal program, which enables analysis of atomic-pair contributions to the transfer integrals. The primary purpose of this workflow is to automate transfer integral calculations over a wide range of molecular arrangements and calculation parameters. However, it can also be used as a general workflow for transfer integral analysis.
 
-We utilize tcal.py program in this workflow and this program enables us to analyze the atomic pair contiribution.
-Our main focus is the automation of the transfer integral calculation with a broad parameter space, but you can use this workflow as transfer integral analysis.
+More information about the tcal program is available at:
+https://github.com/matsui-lab-yamagata/tcal
 
-The detail information about tcal program is in https://github.com/matsui-lab-yamagata/tcal.
-Please note that tcal_1.py has small change from older version of tcal.py.
+Please note that tcal_1.py included in this workflow is a slightly modified version of the original tcal.py.
 
+Example of command-line
+nohup python /path/to/tcal_csv/tcal_csv.py --monomer-name pentacene --auto-dir pentacene_HB --init --qsub --tcal --reult & 
 
+Directory structures
 tcal_csv/
 ├── tcal_1.py
 ├── tcal_csv.py
