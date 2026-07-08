@@ -27,7 +27,11 @@ the swapped a/b) precisely because it's a *physical*-identity label
 (HB/PS, via KIND_LABEL) -- the smallest-a/largest-a criterion that
 assigned it in the first place is geometric and would flip under the a/b
 swap, but the branch itself doesn't change identity just because its axes
-got relabeled.
+got relabeled. For the same reason, KIND_LABEL only says "HB"/"PS", not
+"HB (b-stack)"/"PS (a-stack)" -- the a-stack/b-stack (smallest-a/
+largest-a) description is only true for the unfolded half (theta <= 45);
+past the fold it's backwards, so it's dropped from the display label
+entirely rather than shown-and-wrong for half the range.
 """
 from __future__ import annotations
 
@@ -35,7 +39,7 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import minimum_filter
 
-KIND_LABEL = {"b_contact": "HB (b-stack)", "a_contact": "PS (a-stack)", "local_min": "local min"}
+KIND_LABEL = {"b_contact": "HB", "a_contact": "PS", "local_min": "local min"}
 KIND_COLOR = {"b_contact": "#1f77b4", "a_contact": "#d62728", "local_min": "#2ca02c"}
 
 

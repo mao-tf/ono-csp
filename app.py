@@ -453,8 +453,8 @@ with tab_step1:
         source_badge(src2)
 
         _KIND_LABEL = {
-            "b_contact": "HB (b-stack)",
-            "a_contact": "PS (a-stack)",
+            "b_contact": "HB",
+            "a_contact": "PS",
             "local_min": "local min",
         }
         _KIND_COLOR = {
@@ -737,9 +737,8 @@ with tab_step1:
 
         st.caption(
             "step1.csv alone doesn't record which structural branch "
-            "(HB / PS / local min, i.e. a-stack / b-stack / local min) each "
-            "hill-climb point belongs to. This is recovered directly from "
-            "the data: at "
+            "(HB / PS / local min) each hill-climb point belongs to. This "
+            "is recovered directly from the data: at "
             "each alpha, the visited (a, b) points are treated as a 2D "
             "energy grid, and its local minima *are* the converged "
             "branches (a DFT hill-climb only ever stops at one). "
@@ -902,7 +901,7 @@ with tab_step2:
                 s2_a = c1.number_input("a (Å)", value=float(_s2_default.get("a", 7.2)), key="s2_a")
                 s2_b = c2.number_input("b (Å)", value=float(_s2_default.get("b", 5.9)), key="s2_b")
                 s2_theta = c3.number_input(
-                    "theta (deg, from Step 1)",
+                    "alpha (deg, from Step 1)",
                     value=float(_s2_default.get("alpha", _s2_default.get("theta", 25.0))),
                     key="s2_theta",
                 )
@@ -1277,7 +1276,7 @@ with tab_step3:
         s3_a = c1.number_input("a (Å)", value=float(s1_current.get("a", 7.2)), key="s3vdw_a")
         s3_b = c2.number_input("b (Å)", value=float(s1_current.get("b", 6.0)), key="s3vdw_b")
         s3_theta = c3.number_input(
-            "theta (deg, from Step 1)", value=float(s1_current.get("alpha", 25.0)), key="s3vdw_theta"
+            "alpha (deg, from Step 1)", value=float(s1_current.get("alpha", 25.0)), key="s3vdw_theta"
         )
         c4, c5 = st.columns(2)
         s3_rt = c4.number_input(
@@ -1540,7 +1539,7 @@ with tab_step3:
         s3t_a = c1t.number_input("a (Å)", value=5.8, key="s3twist_a")
         s3t_b = c2t.number_input("b (Å)", value=7.5, key="s3twist_b")
         s3t_theta = c3t.number_input(
-            "theta (deg, from Step 1)", value=65.0, key="s3twist_theta",
+            "alpha (deg, from Step 1)", value=65.0, key="s3twist_theta",
         )
         c4t, c5t = st.columns(2)
         s3t_rt = c4t.number_input(
@@ -1997,7 +1996,7 @@ with tab_transfer:
     st.caption(
         "Transfer integrals along the Fig. 2(b) branches (A2=0, z=0 at "
         "each alpha): run tcal_csv.py with one init_params.csv row per "
-        "(a, b, theta) point from Tab 2's HB/PS (a-stack/b-stack) branches, "
+        "(a, b, theta) point from Tab 2's HB/PS branches, "
         "then combine init_params.csv with result.txt's J columns (same "
         "row order) into one CSV. Expected columns: alpha (or theta), J_t, "
         "J_p, and optionally kind (e.g. HB/PS) to color "
