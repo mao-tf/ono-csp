@@ -90,14 +90,24 @@ pip install -e .
 
 **Without conda**, using Python's built-in `venv` instead (install
 [Python](https://www.python.org/downloads/) 3.10+ first if you don't have
-it):
+it). First check what `python3 --version` gives you — many systems have
+an older Python 3 (e.g. 3.8/3.9) as the default `python3`, in which case
+use whatever command your 3.10+ install actually goes by instead
+(`python3.10`, `python3.11`, ...):
 
 ```bash
+python3 --version                # confirm it says 3.10 or higher
 python3 -m venv csp-env
 source csp-env/bin/activate      # Windows: csp-env\Scripts\activate
 pip install -r requirements.txt
 pip install -e .
 ```
+
+If `pip install -e .` fails with `requires a different Python: ... not in
+'>=3.10'`, that's this exact mismatch — the `venv` was built from a
+too-old `python3`. Delete the `csp-env` folder, rerun the first command
+with the right interpreter (e.g. `python3.11 -m venv csp-env`), and try
+again.
 
 Either way, `pip install -r requirements.txt` pulls in everything the GUI
 needs (including Streamlit itself) — no separate install step required.
