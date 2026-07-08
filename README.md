@@ -84,8 +84,7 @@ don't have it):
 ```bash
 conda create -n csp python=3.10
 conda activate csp
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[viz]"
 ```
 
 **Without conda**, using Python's built-in `venv` instead (install
@@ -99,18 +98,20 @@ use whatever command your 3.10+ install actually goes by instead
 python3 --version                # confirm it says 3.10 or higher
 python3 -m venv csp-env
 source csp-env/bin/activate      # Windows: csp-env\Scripts\activate
-pip install -r requirements.txt
-pip install -e .
+pip install -e ".[viz]"
 ```
 
-If `pip install -e .` fails with `requires a different Python: ... not in
-'>=3.10'`, that's this exact mismatch — the `venv` was built from a
-too-old `python3`. Delete the `csp-env` folder, rerun the first command
-with the right interpreter (e.g. `python3.11 -m venv csp-env`), and try
-again.
+If that fails with `requires a different Python: ... not in '>=3.10'`,
+that's this exact mismatch — the `venv` was built from a too-old
+`python3`. Delete the `csp-env` folder, rerun the first command with the
+right interpreter (e.g. `python3.11 -m venv csp-env`), and try again.
 
-Either way, `pip install -r requirements.txt` pulls in everything the GUI
-needs (including Streamlit itself) — no separate install step required.
+`pip install -e ".[viz]"` pulls in everything the GUI needs (including
+Streamlit itself) in one step. (`requirements.txt` also exists and
+installs the same set of packages — either is fine, but don't mix the
+two up: running only `pip install -e .` *without* `[viz]` installs just
+the core numpy/pandas/scipy library, not Streamlit/Plotly/py3Dmol, and
+the GUI will fail to start.)
 
 For just the vdW-scan/structure-building parts of the package (no GUI),
 the core dependencies (`numpy`, `pandas`, `scipy`, `pyyaml`) are enough —
