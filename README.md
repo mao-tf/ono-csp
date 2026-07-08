@@ -125,6 +125,20 @@ itself.
 streamlit run app.py
 ```
 
+**Next time** (after closing the terminal and coming back later): you
+don't need to reinstall anything, but you do need to re-activate the
+environment first, since that doesn't carry over between terminal
+sessions —
+
+```bash
+conda activate csp               # or: source csp-env/bin/activate
+cd /path/to/ono-csp              # wherever you put the code
+streamlit run app.py
+```
+
+Forgetting the activate step is the usual reason `streamlit run app.py`
+suddenly says `streamlit: command not found`.
+
 This opens a 5-tab GUI. A molecule picker (preset polyacene or your own
 uploaded XYZ) sits above the tabs and applies everywhere — no need to
 switch tabs just to change molecules.
