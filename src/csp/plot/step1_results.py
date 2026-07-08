@@ -22,7 +22,12 @@ Polyacenes are also exactly symmetric under theta -> 90-theta with a and b
 swapped (same physical structure, axes relabeled). Reflecting the
 computed branches through this symmetry extends a theta in [5, 45] scan
 to the full [5, 85] range shown in the paper's Fig. 2b, with no extra
-computation.
+computation. `kind` is kept fixed across this fold (not re-derived from
+the swapped a/b) precisely because it's a *physical*-identity label
+(HB/PS, via KIND_LABEL) -- the smallest-a/largest-a criterion that
+assigned it in the first place is geometric and would flip under the a/b
+swap, but the branch itself doesn't change identity just because its axes
+got relabeled.
 """
 from __future__ import annotations
 
@@ -32,7 +37,6 @@ from scipy.ndimage import minimum_filter
 
 KIND_LABEL = {"b_contact": "HB (b-stack)", "a_contact": "PS (a-stack)", "local_min": "local min"}
 KIND_COLOR = {"b_contact": "#1f77b4", "a_contact": "#d62728", "local_min": "#2ca02c"}
-_KIND_SWAP = {"b_contact": "a_contact", "a_contact": "b_contact", "local_min": "local_min"}
 
 
 def _local_minima_at_theta(df_theta: pd.DataFrame) -> pd.DataFrame:
@@ -82,7 +86,13 @@ def classify_and_fold_step1_results(df_results: pd.DataFrame) -> pd.DataFrame:
     df_folded = df_branches.copy()
     df_folded["theta"] = 90.0 - df_folded["theta"]
     df_folded["a"], df_folded["b"] = df_branches["b"].values, df_branches["a"].values
-    df_folded["kind"] = df_folded["kind"].map(_KIND_SWAP)
+    # `kind` is NOT re-derived from the swapped (a, b) here: folding a branch
+    # to theta -> 90-theta with a/b swapped is the *same physical structure*
+    # under axis relabeling (HB stays HB, PS stays PS), even though the
+    # a_contact/b_contact criterion itself ("smallest-a" vs "largest-a") is
+    # purely geometric and would flip if reapplied to the swapped values.
+    # Keeping `kind` fixed is what makes it a stable physical-identity label
+    # (and what KIND_LABEL's HB/PS mapping assumes) across the full fold.
     df_folded["folded"] = True
 
     return pd.concat([df_branches, df_folded], ignore_index=True).sort_values(

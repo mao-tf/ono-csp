@@ -519,12 +519,15 @@ with tab_step1:
                 env = None
                 if df_curves is not None:
                     env = df_curves[df_curves["valid"]].groupby("alpha", as_index=False)["S"].min()
-                _KIND_SWAP_VDW = {"b_contact": "a_contact", "a_contact": "b_contact", "local_min": "local_min"}
                 if fold_vdw and "kind" in df_init.columns:
                     folded = df_init.copy()
                     folded["theta"] = 90.0 - folded["theta"]
                     folded["a"], folded["b"] = df_init["b"].values, df_init["a"].values
-                    folded["kind"] = folded["kind"].map(_KIND_SWAP_VDW)
+                    # `kind` stays fixed under the fold -- same physical
+                    # branch (HB/PS), just axes relabeled; see
+                    # step1_results.classify_and_fold_step1_results's
+                    # docstring for why re-deriving it from the swapped a/b
+                    # would flip HB/PS identity for half the displayed range.
                     df_init_plot = pd.concat([df_init, folded], ignore_index=True).reset_index(drop=True)
                     if env is not None:
                         env_folded = env.copy()
