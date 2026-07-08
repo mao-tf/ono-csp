@@ -69,11 +69,11 @@ def listen(log_filepath_1,log_filepath_2):## checking whether the energy calcula
     return isOver
 
 def get_file_base_name(monomer_name,params_dict):
-    a_ = params_dict['a']; b_ = params_dict['b']; theta = params_dict['theta']
+    a_ = params_dict['a']; b_ = params_dict['b']; alpha = params_dict['alpha']
     file_base_name = ''
     file_base_name += monomer_name
     file_base_name += '_step2_'
-    file_base_name += 'a={}_b={}_theta={}_'.format(a_,b_,theta)
+    file_base_name += 'a={}_b={}_alpha={}_'.format(a_,b_,alpha)
     return file_base_name
 
 def end_process(args):

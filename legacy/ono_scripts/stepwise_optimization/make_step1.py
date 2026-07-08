@@ -60,8 +60,8 @@ def get_one_exe(file_name):## batch job scripts
 
 def make_xyzfile(monomer_name,params_dict):#.xyz files for visualization
     a_ = params_dict['a']; b_ = params_dict['b']
-    A2 = params_dict.get('A2',0.0); A3 = params_dict['theta']
-    
+    A2 = params_dict.get('A2',0.0); A3 = params_dict['alpha']
+
     monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,A2,A3) # central molecule
     monomer_array_p1 = get_monomer_xyzR(monomer_name,0,b_,0,A2,A3) #p1 - p4 are slipped parallel contact molecules
     monomer_array_p2 = get_monomer_xyzR(monomer_name,0,-b_,0,A2,A3)
@@ -86,7 +86,7 @@ def make_xyz(monomer_name,params_dict):
     xyzfile_name = ''
     xyzfile_name += monomer_name
     for key,val in params_dict.items():
-        if key in ['a','b','cx','cy','cz','theta']:
+        if key in ['a','b','cx','cy','cz','alpha']:
             val = np.round(val,2)
         elif key in ['A2']:#,'theta']:
             val = int(val)
@@ -95,7 +95,7 @@ def make_xyz(monomer_name,params_dict):
 
 def make_gjf_xyz(auto_dir,monomer_name,params_dict):##input file for Gaussian16
     a_ = params_dict['a']; b_ = params_dict['b']
-    A2 =0; A3 = params_dict['theta']
+    A2 =0; A3 = params_dict['alpha']
     
     monomer_array_i = get_monomer_xyzR(monomer_name,0.0,0.0,0.0,A2,A3)
     monomer_array_p1 = get_monomer_xyzR(monomer_name,0.0,b_,0.0,A2,A3)##slipped parallel along b-axis
@@ -124,7 +124,7 @@ def get_file_name_from_dict(monomer_name,params_dict):##basic file name for inpu
     file_name = ''
     file_name += monomer_name
     for key,val in params_dict.items():
-        if key in ['a','b','theta']:
+        if key in ['a','b','alpha']:
             val = np.round(val,2)
         elif key in ['A2']:#,'theta']:
             val = int(val)

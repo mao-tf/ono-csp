@@ -49,7 +49,7 @@ def get_xyzR_lines(xyzR_array,file_description):## Gaussian input files
 
 def make_gjf_xyz(auto_dir,monomer_name,params_dict):## atomic coordinates for 41 * 2 = 82 pairs to be calculate
     a_ = params_dict['a']; b_ = params_dict['b']
-    A2 = 0; A3 = params_dict['theta']
+    A2 = 0; A3 = params_dict['alpha']
     gij_xyz_lines1 = ['$ RunGauss\n']
     gij_xyz_lines2 = ['$ RunGauss\n']
     monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,A2,A3)
@@ -78,7 +78,7 @@ def make_gjf_xyz(auto_dir,monomer_name,params_dict):## atomic coordinates for 41
     file_base_name = ''
     file_base_name += monomer_name
     file_base_name += '_step2_'
-    file_base_name += 'a={}_b={}_theta={}_'.format(a_,b_,A3)
+    file_base_name += 'a={}_b={}_alpha={}_'.format(a_,b_,A3)
     file_name1 = file_base_name
     file_name2 = file_base_name
     file_name1 +='1.inp'##T-shape

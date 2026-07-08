@@ -61,7 +61,7 @@ def get_one_exe(file_name):## batch job scripts
 
 def make_xyzfile(monomer_name,params_dict):#.xyz files for visualization
     a_ = params_dict['a']; b_ = params_dict['b']; c = np.array([params_dict.get('cx',0.0),params_dict.get('cy',0.0),params_dict.get('cz',0.0)])
-    Rt = params_dict.get('Rt',0.0); A2 = params_dict.get('A2',0.0); A3 = params_dict['theta']
+    Rt = params_dict.get('Rt',0.0); A2 = params_dict.get('A2',0.0); A3 = params_dict['alpha']
 
     monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,A2,A3)
     monomer_array_i0 = get_monomer_xyzR(monomer_name,c[0],c[1],c[2],A2,A3)
@@ -87,7 +87,7 @@ def make_xyz(monomer_name,params_dict):
     xyzfile_name = ''
     xyzfile_name += monomer_name
     for key,val in params_dict.items():
-        if key in ['a','b','cx','cy','cz','theta']:
+        if key in ['a','b','cx','cy','cz','alpha']:
             val = np.round(val,2)
         elif key in ['A2']:#,'theta']:
             val = np.round(val,2)
@@ -96,7 +96,7 @@ def make_xyz(monomer_name,params_dict):
 
 def make_gjf_xyz(auto_dir,monomer_name,params_dict):##Rt:t-shaped 
     a_ = params_dict['a']; b_ = params_dict['b']; c = np.array([params_dict['cx'],params_dict['cy'],params_dict['cz']])
-    Rt = params_dict.get('Rt',0.0); A2 = params_dict.get('A2',0.0); A3 = params_dict['theta']
+    Rt = params_dict.get('Rt',0.0); A2 = params_dict.get('A2',0.0); A3 = params_dict['alpha']
     
     monomer_array_i01 = get_monomer_xyzR(monomer_name,c[0],c[1],c[2],A2,A3)
     
@@ -117,7 +117,7 @@ def make_gjf_xyz(auto_dir,monomer_name,params_dict):##Rt:t-shaped
     dimer_array_it1 = np.concatenate([monomer_array_i01,monomer_array_t1])
     dimer_array_it2 = np.concatenate([monomer_array_i01,monomer_array_t2])
     
-    file_description = '{}_theta={}_A2={}_Rt={}'.format(monomer_name,round(A3,2),round(A2,2),round(Rt,2))
+    file_description = '{}_alpha={}_A2={}_Rt={}'.format(monomer_name,round(A3,2),round(A2,2),round(Rt,2))
     line_list_dimer_i01 = get_xyzR_lines(dimer_array_i01,file_description+'_i01')
     line_list_dimer_ip1 = get_xyzR_lines(dimer_array_ip1,file_description+'_ip1')
     line_list_dimer_ip2 = get_xyzR_lines(dimer_array_ip2,file_description+'_ip2')
@@ -140,7 +140,7 @@ def get_file_name_from_dict(monomer_name,paras_dict):#basic file name for input,
     file_name = ''
     file_name += monomer_name
     for key,val in paras_dict.items():
-        if key in ['a','b','cx','cy','cz','theta']:
+        if key in ['a','b','cx','cy','cz','alpha']:
             val = np.round(val,2)
         elif key in ['A2']:#,'theta']:
             val = np.round(val,2)

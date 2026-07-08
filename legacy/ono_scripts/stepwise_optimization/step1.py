@@ -21,13 +21,13 @@ def init_process(args):###initial arrangements are obtained with vdW contact mod
         init_params_csv = os.path.join(auto_dir, 'step1_init_params.csv')
         
         init_para_list = [];A2 = 0
-        theta_list = [5,10,15,20,25,30,35,40,45]## list of half of dihedral angle
-        for theta in tqdm(theta_list):
+        alpha_list = [5,10,15,20,25,30,35,40,45]## list of half of dihedral angle
+        for alpha in tqdm(alpha_list):
             a_list = []; b_list = []; S_list = []
-            a_clps=vdw_R(A2,theta,0.0,'a',monomer_name)### contact distance along a-axis
-            b_clps=vdw_R(A2,theta,90.0,'b',monomer_name)### contact distance along b-axis
+            a_clps=vdw_R(A2,alpha,0.0,'a',monomer_name)### contact distance along a-axis
+            b_clps=vdw_R(A2,alpha,90.0,'b',monomer_name)### contact distance along b-axis
             for theta_ab in range(0,91):
-                R_clps=vdw_R(A2,theta,theta_ab,'t',monomer_name)###contact distance between T-chaped contact
+                R_clps=vdw_R(A2,alpha,theta_ab,'t',monomer_name)###contact distance between T-chaped contact
                 a=2*R_clps*np.cos(np.radians(theta_ab))
                 b=2*R_clps*np.sin(np.radians(theta_ab))
                 if (a_clps > a) or (b_clps > b):
@@ -38,18 +38,18 @@ def init_process(args):###initial arrangements are obtained with vdW contact mod
             local_minidx_list = signal.argrelmin(np.array(S_list), order=order)
             if len(local_minidx_list[0])>0:
                 for local_minidx in local_minidx_list[0]:
-                    init_para_list.append([a_list[local_minidx],b_list[local_minidx],theta,'NotYet'])
-            init_para_list.append([a_list[0],b_list[0],theta,'NotYet'])### slipped parallel along b-axis and T shaped are in contact with central molecule
-            init_para_list.append([a_list[-1],b_list[-1],theta,'NotYet'])### slipped parallel along a-axis and T shaped are in contact with central molecule
-            
-        df_init_params = pd.DataFrame(np.array(init_para_list),columns = ['a','b','theta','status'])
+                    init_para_list.append([a_list[local_minidx],b_list[local_minidx],alpha,'NotYet'])
+            init_para_list.append([a_list[0],b_list[0],alpha,'NotYet'])### slipped parallel along b-axis and T shaped are in contact with central molecule
+            init_para_list.append([a_list[-1],b_list[-1],alpha,'NotYet'])### slipped parallel along a-axis and T shaped are in contact with central molecule
+
+        df_init_params = pd.DataFrame(np.array(init_para_list),columns = ['a','b','alpha','status'])
         df_init_params.to_csv(init_params_csv,index=False)
     
     get_init_para_csv(auto_dir,monomer_name)
     
     auto_csv_path = os.path.join(auto_dir,'step1.csv')
     if not os.path.exists(auto_csv_path):        
-        df_E_init = pd.DataFrame(columns = ['a','b','theta','E','E_p1','E_p2','E_t','status','file_name'])##
+        df_E_init = pd.DataFrame(columns = ['a','b','alpha','E','E_p1','E_p2','E_t','status','file_name'])##
     else:
         df_E_init = pd.read_csv(auto_csv_path)
         df_E_init = df_E_init[df_E_init['status']!='InProgress']
@@ -66,7 +66,7 @@ def main_process(args):
     os.makedirs(os.path.join(auto_dir,'gaussview'), exist_ok=True)## ,xyz files for visualization are saved.
     auto_csv_path = os.path.join(auto_dir,'step1.csv')## calculated energies are stored in this .csv file 
     if not os.path.exists(auto_csv_path):        
-        df_E = pd.DataFrame(columns = ['a','b','theta','E','E_p1','E_p2','E_t','status','file_name'])##
+        df_E = pd.DataFrame(columns = ['a','b','alpha','E','E_p1','E_p2','E_t','status','file_name'])##
         df_E.to_csv(auto_csv_path,index=False)##
 
     os.chdir(os.path.join(args.auto_dir,'gaussian'))
@@ -78,7 +78,7 @@ def main_process(args):
 
 def listen(auto_dir,monomer_name,num_nodes,isTest):##
     num_init = args.num_init
-    fixed_param_keys = ['theta']
+    fixed_param_keys = ['alpha']
     opt_param_keys = ['a','b']
     
     auto_csv = os.path.join(auto_dir,'step1.csv')
@@ -183,7 +183,7 @@ def get_params_dict(auto_dir, num_init,fixed_param_keys,opt_param_keys):
 def get_opt_params_dict(df_cur, init_params_dict,fixed_params_dict): 
     df_val = filter_df(df_cur, fixed_params_dict)
     a_init_prev = init_params_dict['a']; b_init_prev = init_params_dict['b']
-    theta = init_params_dict['theta']
+    alpha = init_params_dict['alpha']
     
     while True:
         E_list=[];heri_list=[]
@@ -192,7 +192,7 @@ def get_opt_params_dict(df_cur, init_params_dict,fixed_params_dict):
             for b in [b_init_prev-0.1,b_init_prev,b_init_prev+0.1]:## 3 * 3 = 9 arrangements to be calculated.
                 a = np.round(a,1);b = np.round(b,1)
                 df_val_ab = df_val[
-                    (df_val['a']==a)&(df_val['b']==b)&(df_val['theta']==theta)&
+                    (df_val['a']==a)&(df_val['b']==b)&(df_val['alpha']==alpha)&
                     (df_val['status']=='Done')]
                 if len(df_val_ab)==0:
                     para_list.append([a,b])

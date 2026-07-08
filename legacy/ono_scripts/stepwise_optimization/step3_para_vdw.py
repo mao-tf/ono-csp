@@ -36,11 +36,11 @@ def get_monomer_xyzR2(monomer_name,Ta,Tb,Tc,A2,A3):## rotation and translation o
     
     return np.concatenate([xyz_array,R_array],axis=1)
     
-def get_c_vec_vdw(monomer_name,Rt,Rp,a_,b_,theta):#,name_csv
+def get_c_vec_vdw(monomer_name,Rt,Rp,a_,b_,alpha):#,name_csv
     
     i=np.zeros(3); a=np.array([a_,0,2*Rt-Rp]); b=np.array([0,b_,Rp]); t1=(a+b)/2;t2=(a-b)/2 ##ずらし方の定義
-    monomer_array_i0 = get_monomer_xyzR1(monomer_name,0.,0.,0.,0.,theta);monomer_array_t0 = get_monomer_xyzR1(monomer_name,0.,0.,0.,0.,-theta)
-    monomer_array_i = get_monomer_xyzR2(monomer_name,0.,0.,0.,0.,theta);monomer_array_t = get_monomer_xyzR2(monomer_name,0.,0.,0.,0.,-theta)
+    monomer_array_i0 = get_monomer_xyzR1(monomer_name,0.,0.,0.,0.,alpha);monomer_array_t0 = get_monomer_xyzR1(monomer_name,0.,0.,0.,0.,-alpha)
+    monomer_array_i = get_monomer_xyzR2(monomer_name,0.,0.,0.,0.,alpha);monomer_array_t = get_monomer_xyzR2(monomer_name,0.,0.,0.,0.,-alpha)
     
     arr_list1=[[i,'p'],[b,'p'],[-b,'p'],[a,'p'],[-a,'p'],[t1,'t'],[-t1,'t'],[t2,'t'],[-t2,'t']]##molecular layer with 9 atoms
     arr_list2=[[i,'t'],[b,'t'],[-b,'t'],[a,'t'],[-a,'t'],[t1,'p'],[-t1,'p'],[t2,'p'],[-t2,'p']]##molecular layer with 9 atoms type2

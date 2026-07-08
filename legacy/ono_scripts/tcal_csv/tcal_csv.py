@@ -28,15 +28,15 @@ def pre_process(args):
     monomer_name = args.monomer_name
 
     df=pd.read_csv(f'{work_dir}/init_params.csv')##parameters of molecular arrangements to be calculated
-    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
+    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();alpha_list=df['alpha'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
-    for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
+    for a,b,alpha,A2,z in zip(a_list,b_list,alpha_list,A2_list,z_list):
         
-        os.makedirs(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}",exist_ok=True)## calculation directory
-        shutil.copy(os.path.join(_SCRIPT_DIR,"job.sh"),rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}") ## batch job script
-        shutil.copy(os.path.join(_SCRIPT_DIR,"tcal_1.py"),rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}") ## tcal program for calculating the transfer integral  
+        os.makedirs(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}",exist_ok=True)## calculation directory
+        shutil.copy(os.path.join(_SCRIPT_DIR,"job.sh"),rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}") ## batch job script
+        shutil.copy(os.path.join(_SCRIPT_DIR,"tcal_1.py"),rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}") ## tcal program for calculating the transfer integral  
         
-    for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):  ## Gaussian16 input files without molecuar coordinates  
+    for a,b,alpha,A2,z in zip(a_list,b_list,alpha_list,A2_list,z_list):  ## Gaussian16 input files without molecuar coordinates  
         lines1 = [     
             '%mem=30GB\n',
             '%nproc=40\n',
@@ -44,7 +44,7 @@ def pre_process(args):
             '#b3lyp/6-31g*\n',
             '# symmetry=none\n',
             '\n',
-            'theta={}_t\n'.format(theta),
+            'alpha={}_t\n'.format(alpha),
             '\n',
             '0 1\n'
         ]
@@ -62,12 +62,12 @@ def pre_process(args):
             '# iop(3/33=4,5/33=3)\n\n\n'
         ]
 
-        monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,A2,theta)## central molecule
-        monomer_array_t = get_monomer_xyzR(monomer_name,a/2,b/2,z,A2,-theta)
+        monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,A2,alpha)## central molecule
+        monomer_array_t = get_monomer_xyzR(monomer_name,a/2,b/2,z,A2,-alpha)
         if b>a:
-            monomer_array_p = get_monomer_xyzR(monomer_name,a,0,0,A2,theta)
+            monomer_array_p = get_monomer_xyzR(monomer_name,a,0,0,A2,alpha)
         else:
-            monomer_array_p = get_monomer_xyzR(monomer_name,0,b,2*z,A2,theta)###molecular shift under glide symmetry
+            monomer_array_p = get_monomer_xyzR(monomer_name,0,b,2*z,A2,alpha)###molecular shift under glide symmetry
         
         line_i=[];line_t=[];line_p=[]
         for X,Y,Z,R in monomer_array_i:
@@ -84,37 +84,37 @@ def pre_process(args):
             line_p.append(line)
 
         ### 6 files consisting of dimer monomer1 monomer2 of t-shaped and slipped parallel
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(line_t)
             f.writelines(lines2)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m1.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t_m1.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m1.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t_m1.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(lines2)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m2.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t_m2.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t_m2.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t_m2.gjf","a") as f:
             f.writelines(line_t)
             f.writelines(lines2)
 
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(line_p)
             f.writelines(lines2)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m1.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p_m1.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m1.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p_m1.gjf","a") as f:
             f.writelines(line_i)
             f.writelines(lines2)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m2.gjf","w") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p_m2.gjf","w") as f:
             f.writelines(lines1)
-        with open(rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p_m2.gjf","a") as f:
+        with open(rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p_m2.gjf","a") as f:
             f.writelines(line_p)
             f.writelines(lines2)
         
@@ -122,10 +122,10 @@ def qsub_process(args):## submission of Gaussian16 calculations
     work_dir = args.auto_dir
     
     df=pd.read_csv(f'{work_dir}/init_params.csv')
-    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
+    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();alpha_list=df['alpha'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
-    for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-        path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
+    for a,b,alpha,A2,z in zip(a_list,b_list,alpha_list,A2_list,z_list):
+        path=rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}"
         os.chdir(path)
         subprocess.run(['pjsub job.sh'],shell=True)
         time.sleep(10)##we do not prepare controlling system so we submit the job every 10 seconds
@@ -134,15 +134,15 @@ def tcal_process(args): ## calculate transfer integral using tcal_1.py published
     work_dir = args.auto_dir
     monomer_name = args.monomer_name
     df=pd.read_csv(f'{work_dir}/init_params.csv')
-    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
+    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();alpha_list=df['alpha'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
 
     monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,0,0)
     n1=len(monomer_array_i)
 
-    for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-        path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
-        check_path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test.fch"
+    for a,b,alpha,A2,z in zip(a_list,b_list,alpha_list,A2_list,z_list):
+        path=rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}"
+        check_path=rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test.fch"
         while not os.path.exists(check_path):
             time.sleep(1)
         os.chdir(path)
@@ -153,12 +153,12 @@ def result_process(args):
     work_dir = args.auto_dir
     
     df=pd.read_csv(f'{work_dir}/init_params.csv')##pathは適宜決定
-    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
+    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();alpha_list=df['alpha'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
     with open(f"{work_dir}/result.txt",'w')as f1:
-        for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-            path_t=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_t.txt"
-            path_p=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}/test_p.txt"
+        for a,b,alpha,A2,z in zip(a_list,b_list,alpha_list,A2_list,z_list):
+            path_t=rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_t.txt"
+            path_p=rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}/test_p.txt"
             with open(path_t) as f:
                 for line in f:
                     s=line.split()
@@ -174,10 +174,10 @@ def result_process(args):
 def rm_process(args):## log files of this workflow are large, so you can remove them if you want.   
     work_dir = args.auto_dir
     df=pd.read_csv(f'{work_dir}/init_params.csv')##
-    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();theta_list=df['theta'].values.tolist()
+    a_list=df['a'].values.tolist();b_list=df['b'].values.tolist();alpha_list=df['alpha'].values.tolist()
     A2_list=df['A2'].values.tolist();z_list=df['z'].values.tolist()
-    for a,b,theta,A2,z in zip(a_list,b_list,theta_list,A2_list,z_list):
-        path=rf"{work_dir}/a={a}_b={b}_theta={theta}_A2={A2}_z={z}"
+    for a,b,alpha,A2,z in zip(a_list,b_list,alpha_list,A2_list,z_list):
+        path=rf"{work_dir}/a={a}_b={b}_alpha={alpha}_A2={A2}_z={z}"
         os.chdir(path)
         subprocess.run(['rm *log'],shell=True)## you can add 'rm *chk' and 'rm *fch'
 

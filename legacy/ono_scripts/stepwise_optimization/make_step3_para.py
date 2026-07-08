@@ -78,7 +78,7 @@ def get_one_exe(file_name):## batch job scripts
 
 def make_xyzfile(monomer_name,params_dict):#.xyz files for visualization
     a_ = params_dict['a']; b_ = params_dict['b']; c = np.array([params_dict.get('cx',0.0),params_dict.get('cy',0.0),params_dict.get('cz',0.0)])
-    A2 = params_dict.get('A2',0.0); A3 = params_dict['theta']
+    A2 = params_dict.get('A2',0.0); A3 = params_dict['alpha']
     
     monomer_array_i = get_monomer_xyzR(monomer_name,0,0,0,A2,A3)
     monomer_array_i0 = get_monomer_xyzR(monomer_name,c[0],c[1],c[2],A2,A3)
@@ -102,7 +102,7 @@ def make_xyz(monomer_name,params_dict):
     xyzfile_name = ''
     xyzfile_name += monomer_name
     for key,val in params_dict.items():
-        if key in ['a','b','cx','cy','cz','theta']:
+        if key in ['a','b','cx','cy','cz','alpha']:
             val = np.round(val,2)
         elif key in ['A2']:#,'theta']:
             val = int(val)
@@ -112,7 +112,7 @@ def make_xyz(monomer_name,params_dict):
 def make_gjf_xyz(auto_dir,monomer_name,params_dict):##Rt:t-shaped Rp:slipped-parallel
     a_ = params_dict['a']; b_ = params_dict['b']; c = np.array([params_dict['cx'],params_dict['cy'],params_dict['cz']])
     Rt = params_dict['Rt']; Rp =params_dict['Rp']
-    A2 = 0; A3 = params_dict['theta']
+    A2 = 0; A3 = params_dict['alpha']
     
     monomer_array_c1 = get_monomer_xyzR(monomer_name,0,0,0,A2,A3)## central molecule
     monomer_array_i01 = get_monomer_xyzR(monomer_name,c[0],c[1],c[2],A2,A3)
@@ -179,7 +179,7 @@ def get_file_name_from_dict(monomer_name,paras_dict):##basic file name for input
     file_name = ''
     file_name += monomer_name
     for key,val in paras_dict.items():
-        if key in ['a','b','cx','cy','cz','theta','Rt','Rp']:
+        if key in ['a','b','cx','cy','cz','alpha','Rt','Rp']:
             val = np.round(val,2)
         elif key in ['A2']:#,'theta']:
             val = int(val)

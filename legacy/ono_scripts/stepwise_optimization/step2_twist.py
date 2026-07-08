@@ -13,7 +13,7 @@ def main_process(args):
     os.makedirs(os.path.join(auto_dir,'gaussview'), exist_ok=True)
     auto_csv_path = os.path.join(auto_dir,'step2_twist.csv')
     if not os.path.exists(auto_csv_path):        
-        df_E = pd.DataFrame(columns = ['a','b','theta','Rt','A2','E','E_p1','E_t','status','file_name'])##いじる
+        df_E = pd.DataFrame(columns = ['a','b','alpha','Rt','A2','E','E_p1','E_t','status','file_name'])##いじる
         df_E.to_csv(auto_csv_path,index=False)##
 
     os.chdir(os.path.join(args.auto_dir,'gaussian'))
@@ -25,7 +25,7 @@ def main_process(args):
 
 def listen(auto_dir,monomer_name,num_nodes,isTest):
     num_init = args.num_init
-    fixed_param_keys = ['theta','Rt','A2']
+    fixed_param_keys = ['alpha','Rt','A2']
     opt_param_keys = ['a','b']
     
     auto_csv = os.path.join(auto_dir,'step2_twist.csv')
@@ -129,7 +129,7 @@ def get_params_dict(auto_dir, num_init,fixed_param_keys,opt_param_keys):
 def get_opt_params_dict(df_cur, init_params_dict,fixed_params_dict):
     df_val = filter_df(df_cur, fixed_params_dict)
     a_init_prev = init_params_dict['a']; b_init_prev = init_params_dict['b']
-    Rt = init_params_dict['Rt']; A2 = init_params_dict['A2']; theta = init_params_dict['theta']
+    Rt = init_params_dict['Rt']; A2 = init_params_dict['A2']; alpha = init_params_dict['alpha']
     
     while True:
         E_list=[];heri_list=[]
@@ -138,7 +138,7 @@ def get_opt_params_dict(df_cur, init_params_dict,fixed_params_dict):
             for b in [b_init_prev-0.1,b_init_prev,b_init_prev+0.1]:
                 a = np.round(a,1);b = np.round(b,1)
                 df_val_ab = df_val[
-                    (df_val['a']==a)&(df_val['b']==b)&(df_val['theta']==theta)&
+                    (df_val['a']==a)&(df_val['b']==b)&(df_val['alpha']==alpha)&
                     (df_val['Rt']==Rt)&(df_val['A2']==A2)&
                     (df_val['status']=='Done')]
                 if len(df_val_ab)==0:
