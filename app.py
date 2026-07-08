@@ -253,7 +253,11 @@ _SETUP_MONOMER_ENV = (
     "- Set `CSP_MONOMER_DIR` to the folder holding the monomer CSV "
     "(X, Y, Z, R columns — download it from **Tab 1**), e.g. "
     "`export CSP_MONOMER_DIR=/path/to/data/monomer` "
-    "(defaults to `~/path/to/monomer/` if unset)."
+    "(defaults to `~/path/to/monomer/` if unset). This matters because "
+    "the init_params CSV below only has the *lattice* numbers (a, b, "
+    "theta, ...) — no atom coordinates. The script reads the monomer's "
+    "actual X, Y, Z, R from this directory and combines the two to build "
+    "the real 3D dimer/cluster geometry that Gaussian16 runs on."
 )
 _SETUP_SCHEDULER = (
     "- The legacy scripts as uploaded submit jobs with `pjsub` "
@@ -694,7 +698,7 @@ with tab_step1:
 
     # ─── Section: DFT-D refinement (CLI) ──────────────────────────
     st.subheader("DFT-D refinement — CLI")
-    st.subheader("How to run (CLI)")
+    st.subheader("How to run (CLI, i.e. commands typed in a terminal)")
     cli_howto(
         what=(
             "Step 1 DFT-D refinement runs on an HPC with Gaussian16 using "
@@ -833,7 +837,7 @@ with tab_step2:
     sub_para, sub_twist = st.tabs(["para", "twist (→ Type III)"])
 
     with sub_para:
-        st.subheader("How to run (CLI)")
+        st.subheader("How to run (CLI, i.e. commands typed in a terminal)")
         cli_howto(
             what=(
                 "Step 2 (para variant) scans the molecular shift z along the "
@@ -1085,7 +1089,7 @@ with tab_step2:
         _twist_b = float(_twist_default.get("b", 6.7))
         _twist_theta = float(_twist_default.get("alpha", _twist_default.get("theta", 21.0)))
 
-        st.subheader("How to run (CLI)")
+        st.subheader("How to run (CLI, i.e. commands typed in a terminal)")
         cli_howto(
             what=(
                 "Step 2 (twist variant, → Type III packing with glide "
@@ -1450,7 +1454,7 @@ with tab_step3:
                     )
 
         st.divider()
-        st.subheader("How to run (CLI)")
+        st.subheader("How to run (CLI, i.e. commands typed in a terminal)")
         cli_howto(
             what=(
                 "Step 3 (para variant) optimizes the interlayer c-vector "
@@ -1683,7 +1687,7 @@ with tab_step3:
                     )
 
         st.divider()
-        st.subheader("How to run (CLI)")
+        st.subheader("How to run (CLI, i.e. commands typed in a terminal)")
         cli_howto(
             what=(
                 "Step 3 (twist variant): interlayer c-vector optimization "
@@ -1913,7 +1917,7 @@ with tab_step3:
 #  Tab 5: Transfer Integrals  (CLI; results shown here)
 # ══════════════════════════════════════════════════════════
 with tab_transfer:
-    st.subheader("How to run (CLI)")
+    st.subheader("How to run (CLI, i.e. commands typed in a terminal)")
     cli_howto(
         what=(
             "Transfer integrals are computed with the CSV-batch workflow in "

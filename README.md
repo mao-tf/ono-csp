@@ -89,7 +89,9 @@ with **With conda** below.
 
 **With conda** (install
 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) first if you
-don't have it):
+don't have it). **On Windows**, use the **Anaconda Prompt** app (search
+for it in the Start menu) instead of the regular Command Prompt or
+PowerShell — those don't recognize the `conda` command:
 
 ```bash
 conda create -n csp python=3.10
