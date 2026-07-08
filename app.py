@@ -219,6 +219,26 @@ def render_molecule_3d(symbols, coords, comment: str, key_suffix: str, style_key
     )
 
 
+_TREE_STEPWISE = """your-working-dir/
+├── stepX_init_params.csv   # starting points -- from a GUI download, or hand-written
+├── stepX.csv               # results, created/updated as jobs finish
+├── gaussian/               # created automatically
+│   ├── *.inp               # Gaussian16 input files
+│   ├── *.log               # Gaussian16 output files
+│   └── *.r1                # batch job scripts
+└── gaussview/              # created automatically
+    └── *.xyz               # structures, for visualization"""
+
+_TREE_TCAL = """your-working-dir/
+├── init_params.csv                # arrangements to compute (a, b, theta, A2, z)
+├── result.txt                     # summarized transfer integrals, after --result
+└── a=.._b=.._theta=.._A2=.._z=../ # one folder per arrangement
+    ├── job.sh, tcal_1.py          # copied in automatically
+    ├── test_t/test_p*.gjf         # Gaussian16 inputs (T-shaped / slipped-parallel)
+    ├── test_t/test_p*.log         # Gaussian16 outputs
+    └── test_t/test_p.txt          # per-arrangement transfer integral"""
+
+
 def cli_howto(
     *,
     what: str,
@@ -227,6 +247,7 @@ def cli_howto(
     command: str,
     output: str,
     show_route: bool = True,
+    tree: Optional[str] = _TREE_STEPWISE,
 ) -> None:
     """Standard 4-part "how to run this step with Ono's package" block.
 
@@ -235,6 +256,10 @@ def cli_howto(
     the others: what the step computes, what input file(s) to prepare by
     hand (and where their values come from), what one-time environment
     setup is needed, then the command and the resulting output file.
+
+    `tree`: an optional `--auto-dir` working-directory layout to show in a
+    collapsed reference section (pass `_TREE_TCAL` for the transfer-integral
+    workflow's per-arrangement layout, or `None` to omit).
     """
     st.info(what)
     st.markdown("**1. Prepare inputs**")
@@ -247,6 +272,9 @@ def cli_howto(
         st.code(GAUSSIAN_ROUTE, language="text")
     st.markdown("**4. Output**")
     st.markdown(output)
+    if tree:
+        with st.expander("What the working directory (`--auto-dir`) looks like"):
+            st.code(tree, language="text")
 
 
 _SETUP_MONOMER_ENV = (
@@ -1951,6 +1979,7 @@ with tab_transfer:
         ),
         output="`<auto-dir>/result.txt` — space-separated HOMO transfer integrals per row (T-shaped, then slipped-parallel).",
         show_route=False,
+        tree=_TREE_TCAL,
     )
 
     st.divider()
