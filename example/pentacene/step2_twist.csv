@@ -1,4 +1,4 @@
-a,b,theta,Rt,A2,E,E_p1,E_t,machine_type,status,file_name
+a,b,alpha,Rt,A2,E,E_p1,E_t,machine_type,status,file_name
 6,7.2,65,0.0,-24,-17.96196421154309,-3.4019563585170545,-2.789512873627245,3,Done,naphthalene_theta=65_Rt=0.0_A2=-24_a=6_b=7.2.log
 6,7.2,65,0.0,-20,-21.154087501461618,-3.6650587513577193,-3.4559924996865448,3,Done,naphthalene_theta=65_Rt=0.0_A2=-20_a=6_b=7.2.log
 6,7.2,65,0.0,-16,-23.57070381275844,-3.765717630449217,-4.009817137965001,3,Done,naphthalene_theta=65_Rt=0.0_A2=-16_a=6_b=7.2.log

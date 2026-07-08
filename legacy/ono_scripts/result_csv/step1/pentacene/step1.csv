@@ -1,4 +1,4 @@
-a,b,theta,E,E_p1,E_p2,E_t,machine_type,status,file_name
+a,b,alpha,E,E_p1,E_p2,E_t,machine_type,status,file_name
 6.5,7.5,5,-51.65468294,-2.487910232,-0.858391009,-11.24052011,2,Done,pentacene_theta=5_a=6.5_b=7.5_cx=0_cy=0_cz=0_A1=0_A2=0.log
 3.5,13.2,5,-39.44283633,-0.008241716,-9.002760468,-5.355207991,2,Done,pentacene_theta=5_a=3.5_b=13.2_cx=0_cy=0_cz=0_A1=0_A2=0.log
 6.6,7.3,10,-54.72853063,-3.393983216,-0.85155366,-11.55936422,1,Done,pentacene_theta=10_a=6.6_b=7.3_cx=0_cy=0_cz=0_A1=0_A2=0.log

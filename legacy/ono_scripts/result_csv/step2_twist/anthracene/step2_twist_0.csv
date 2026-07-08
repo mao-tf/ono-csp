@@ -1,4 +1,4 @@
-a,b,theta,Rt,A2,E,E_p1,E_t,machine_type,status,file_name
+a,b,alpha,Rt,A2,E,E_p1,E_t,machine_type,status,file_name
 6.0,7.2,65,0.0,-20,-6.424281717510894,-5.778054349124432,1.2829567451844923,3,Done,anthracene_theta=65_Rt=0.0_A2=-20_a=6.0_b=7.2.log
 6.0,7.2,65,0.0,-16,-21.01088218926452,-5.928252632729709,-2.288594230951276,3,Done,anthracene_theta=65_Rt=0.0_A2=-16_a=6.0_b=7.2.log
 6.0,7.2,65,0.0,-12,-31.05929520050995,-5.859496361808851,-4.835075619223062,3,Done,anthracene_theta=65_Rt=0.0_A2=-12_a=6.0_b=7.2.log
