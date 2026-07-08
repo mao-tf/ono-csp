@@ -187,10 +187,23 @@ data before running anything yourself.
 ## Running the DFT steps
 
 The DFT-D refinement steps (everything past the in-GUI vdW scans) run
-from the command line using the scripts in `legacy/ono_scripts/`, on
-whatever HPC cluster you have Gaussian16 access to. Each GUI tab shows
-the exact command plus what input file to prepare and what the output
-looks like. Two things to set up once:
+from the command line using the scripts in `legacy/ono_scripts/` — inside
+the same folder you downloaded or cloned (e.g.
+`ono-csp-main/legacy/ono_scripts/` from a zip download, or
+`ono-csp/legacy/ono_scripts/` from `git clone`), specifically:
+
+- `legacy/ono_scripts/stepwise_optimization/` for Steps 1-3 (`step1.py`,
+  `step2_para.py`, `step2_twist.py`, `step3_para.py`, `step3_twist.py`,
+  their matching `make_*.py`, and a shared `utils.py`)
+- `legacy/ono_scripts/tcal_csv/` for the transfer-integral workflow
+  (`tcal_csv.py`, `tcal_1.py`, `utils.py`, `job.sh`)
+
+Either `cd` into the relevant one, or copy its files to wherever you'll
+actually run this (typically your HPC login node) — on whatever HPC
+cluster you have Gaussian16 access to. Each GUI tab shows the exact
+command plus what input file to prepare and what the output looks like
+(and repeats which specific files to grab, under "1. Locate the
+scripts"). Two things to set up once:
 
 - `CSP_MONOMER_DIR`: point this at the folder holding your monomer CSV
   (`export CSP_MONOMER_DIR=/path/to/data/monomer`) — download it from

@@ -257,29 +257,40 @@ def cli_howto(
     output: str,
     show_route: bool = True,
     tree: Optional[str] = _TREE_STEPWISE,
+    scripts_dir: str = LEGACY_DIR,
+    scripts_files: str = "the `stepX.py`/`make_stepX.py` pair for this step, plus `utils.py`",
 ) -> None:
-    """Standard 4-part "how to run this step with Ono's package" block.
+    """Standard 5-part "how to run this step with Ono's package" block.
 
     Every CLI section (Step 1 DFT, Step 2/3 para/twist, Transfer Integrals)
     uses the same shape so a user who has read one knows where to look in
-    the others: what the step computes, what input file(s) to prepare by
-    hand (and where their values come from), what one-time environment
-    setup is needed, then the command and the resulting output file.
+    the others: where the scripts actually are inside the downloaded
+    folder, what input file(s) to prepare by hand (and where their values
+    come from), what one-time environment setup is needed, then the
+    command and the resulting output file.
 
     `tree`: an optional `--auto-dir` working-directory layout to show in a
     collapsed reference section (pass `_TREE_TCAL` for the transfer-integral
     workflow's per-arrangement layout, or `None` to omit).
     """
     st.info(what)
-    st.markdown("**1. Prepare inputs**")
+    st.markdown("**1. Locate the scripts**")
+    st.markdown(
+        f"They live at `{scripts_dir}/` inside the folder you downloaded "
+        f"or cloned (e.g. `ono-csp-main/{scripts_dir}/` from a zip "
+        f"download, or `ono-csp/{scripts_dir}/` from `git clone`). Either "
+        f"`cd` there directly, or copy {scripts_files} to wherever you'll "
+        "actually run this (e.g. your HPC login node)."
+    )
+    st.markdown("**2. Prepare inputs**")
     st.markdown(prepare)
-    st.markdown("**2. One-time setup**")
+    st.markdown("**3. One-time setup**")
     st.markdown(setup)
-    st.markdown("**3. Run**")
+    st.markdown("**4. Run**")
     st.code(command, language="bash")
     if show_route:
         st.code(GAUSSIAN_ROUTE, language="text")
-    st.markdown("**4. Output**")
+    st.markdown("**5. Output**")
     st.markdown(output)
     if tree:
         with st.expander("What the working directory (`--auto-dir`) looks like"):
@@ -762,6 +773,7 @@ with tab_step1:
             "# to keep hill-climbing from where step1.csv left off."
         ),
         output="`<auto-dir>/step1.csv` — columns `a, b, theta, E, E_p1, E_p2, E_t, status, file_name`.",
+        scripts_files="`step1.py`, `make_step1.py`, and `utils.py`",
     )
 
     st.divider()
@@ -908,6 +920,7 @@ with tab_step2:
             setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
             command="python step2_para.py --auto-dir /path/to/workdir --monomer-name pentacene",
             output="`<auto-dir>/step2_para.csv` — columns `z, Et, Ep` (mirrored to -4..4 Å).",
+            scripts_files="`step2_para.py`, `make_step2_para.py`, and `utils.py`",
         )
 
         st.divider()
@@ -1157,6 +1170,7 @@ with tab_step2:
                 "`<auto-dir>/step2_twist.csv` — columns `a, b, theta, Rt, A2, "
                 "E, E_p1, E_t, status, file_name`."
             ),
+            scripts_files="`step2_twist.py`, `make_step2_twist.py`, and `utils.py`",
         )
         st.divider()
         st.subheader("Fig. 7(c)-style: Eintra(6) vs theta_twist / Rt (ΔzT)")
@@ -1533,6 +1547,7 @@ with tab_step3:
                 "Rt, Rp, E, E_i01, E_ip1, E_ip2, E_it1..4, E_i02, E_ip3, E_ip4, "
                 "status, file_name`."
             ),
+            scripts_files="`step3_para.py`, `make_step3_para.py`, and `utils.py`",
         )
 
         st.divider()
@@ -1747,6 +1762,7 @@ with tab_step3:
                 "--monomer-name naphthalene \\\n    --num-nodes 4 --num-init 2"
             ),
             output="`<auto-dir>/step3_twist.csv` — columns `cx, cy, cz, ..., E`.",
+            scripts_files="`step3_twist.py`, `make_step3_twist.py`, and `utils.py`",
         )
         st.divider()
         st.subheader("Fig. 7(d)-style: Total E vs theta_twist (A2)")
@@ -1991,6 +2007,8 @@ with tab_transfer:
         output="`<auto-dir>/result.txt` — space-separated HOMO transfer integrals per row (T-shaped, then slipped-parallel).",
         show_route=False,
         tree=_TREE_TCAL,
+        scripts_dir="legacy/ono_scripts/tcal_csv",
+        scripts_files="`tcal_csv.py`, `tcal_1.py`, `utils.py`, and `job.sh`",
     )
 
     st.divider()
