@@ -7,7 +7,7 @@
 `step1a_scan` ports Ono's `init_process`/`get_init_para_csv`
 (legacy/ono_scripts/stepwise_optimization/step1.py) exactly:
 
-For each herringbone half-angle alpha (= A3 = the `theta` column of the
+For each herringbone half-angle alpha (= A3 = the `alpha` column of the
 legacy CSVs):
   1. a_clps / b_clps: contact distance of two parallel (+alpha) molecules
      pushed along the a-axis (0°) / b-axis (90°) — the smallest possible
@@ -92,11 +92,11 @@ def step1a_scan(
       (alpha, theta_ab) grid point — this is the data for a Fig. S1(c)-style
       plot (S vs beta, one curve per alpha).
     - df_init: initial candidates for the DFT hill-climb, extracted from the
-      *valid* points only; columns a, b, theta, S,
+      *valid* points only; columns a, b, alpha, S,
       kind ('local_min' / 'b_contact' / 'a_contact'), status='NotYet' —
-      matching the legacy step1_init_params.csv format (theta = alpha). The
-      envelope of these across alpha is the vdW analogue of the paper's
-      Fig. 2(b) (S instead of the DFT-optimized E_intra(8)).
+      matching the legacy step1_init_params.csv format. The envelope of
+      these across alpha is the vdW analogue of the paper's Fig. 2(b) (S
+      instead of the DFT-optimized E_intra(8)).
     """
     mol_l = to_layer_frame(mol)
     radii = _effective_radii(mol_l, radii_overrides)
@@ -148,5 +148,5 @@ def step1a_scan(
     df_curves = pd.DataFrame(
         curve_rows, columns=['alpha', 'theta_ab', 'a', 'b', 'S', 'valid']
     )
-    df_init = pd.DataFrame(init_rows, columns=['a', 'b', 'theta', 'S', 'kind', 'status'])
+    df_init = pd.DataFrame(init_rows, columns=['a', 'b', 'alpha', 'S', 'kind', 'status'])
     return df_curves, df_init

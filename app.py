@@ -230,9 +230,9 @@ _TREE_STEPWISE = """your-working-dir/
     └── *.xyz               # structures, for visualization"""
 
 _TREE_TCAL = """your-working-dir/
-├── init_params.csv                # arrangements to compute (a, b, theta, A2, z)
+├── init_params.csv                # arrangements to compute (a, b, alpha, A2, z)
 ├── result.txt                     # summarized transfer integrals, after --result
-└── a=.._b=.._theta=.._A2=.._z=../ # one folder per arrangement
+└── a=.._b=.._alpha=.._A2=.._z=../ # one folder per arrangement
     ├── job.sh, tcal_1.py          # copied in automatically
     ├── test_t/test_p*.gjf         # Gaussian16 inputs (T-shaped / slipped-parallel)
     ├── test_t/test_p*.log         # Gaussian16 outputs
@@ -305,7 +305,7 @@ _SETUP_MONOMER_ENV = (
     "`export CSP_MONOMER_DIR=/path/to/data/monomer` "
     "(defaults to `~/path/to/monomer/` if unset). This matters because "
     "the init_params CSV below only has the *lattice* numbers (a, b, "
-    "theta, ...) — no atom coordinates. The script reads the monomer's "
+    "alpha, ...) — no atom coordinates. The script reads the monomer's "
     "actual X, Y, Z, R from this directory and combines the two to build "
     "the real 3D dimer/cluster geometry that Gaussian16 runs on."
 )
@@ -480,7 +480,12 @@ with tab_step1:
         df_up, src2 = load_results_csv("s1vdw_results", "step1_init_params.csv")
         if df_up is not None:
             df_up = df_up.rename(columns={c: c.lower() for c in df_up.columns})
-            if {"a", "b", "theta"} <= set(df_up.columns):
+            # Accept the current "alpha" column name or the legacy "theta"
+            # one (Ono's scripts originally called this column theta; both
+            # bundled samples and freshly-generated files now say alpha).
+            if "alpha" not in df_up.columns and "theta" in df_up.columns:
+                df_up = df_up.rename(columns={"theta": "alpha"})
+            if {"a", "b", "alpha"} <= set(df_up.columns):
                 df_init = df_up.rename(columns={"s": "S"})
                 if "S" not in df_init.columns:
                     df_init["S"] = df_init["a"] * df_init["b"]
@@ -497,7 +502,7 @@ with tab_step1:
                         except Exception:
                             df_curves = None
             else:
-                st.warning("Expected columns a, b, theta (legacy step1_init_params.csv format).")
+                st.warning("Expected columns a, b, alpha (legacy step1_init_params.csv format).")
 
     if df_init is not None:
         source_badge(src2)
@@ -518,8 +523,8 @@ with tab_step1:
                 return None
             row = df.loc[df["S"].idxmin()] if "S" in df.columns else df.iloc[0]
             return {
-                "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                "label": f"default (min S): alpha={row['theta']} a={row['a']} b={row['b']}",
+                "alpha": float(row["alpha"]), "a": float(row["a"]), "b": float(row["b"]),
+                "label": f"default (min S): alpha={row['alpha']} a={row['a']} b={row['b']}",
             }
 
         def _render_preview(df: pd.DataFrame, key_suffix: str) -> None:
@@ -571,7 +576,7 @@ with tab_step1:
                     env = df_curves[df_curves["valid"]].groupby("alpha", as_index=False)["S"].min()
                 if fold_vdw and "kind" in df_init.columns:
                     folded = df_init.copy()
-                    folded["theta"] = 90.0 - folded["theta"]
+                    folded["alpha"] = 90.0 - folded["alpha"]
                     folded["a"], folded["b"] = df_init["b"].values, df_init["a"].values
                     # `kind` stays fixed under the fold -- same physical
                     # branch (HB/PS), just axes relabeled; see
@@ -591,19 +596,19 @@ with tab_step1:
                         hoverinfo="skip",
                     ))
                 for kind, grp in (df_init_plot.groupby("kind") if "kind" in df_init_plot.columns else []):
-                    grp = grp.sort_values("theta")
+                    grp = grp.sort_values("alpha")
                     color = _KIND_COLOR.get(kind, "gray")
                     figA.add_trace(go.Scatter(
-                        x=grp["theta"], y=grp["S"], mode="lines+markers",
+                        x=grp["alpha"], y=grp["S"], mode="lines+markers",
                         name=_KIND_LABEL.get(kind, kind),
                         line=dict(color=color), marker=dict(size=9, color=color),
                         customdata=grp.index.to_numpy(),
                         hovertemplate="alpha=%{x}<br>S=%{y:.1f} Å²<extra>" + kind + "</extra>",
                     ))
                 if "kind" not in df_init.columns:
-                    grp = df_init.sort_values("theta")
+                    grp = df_init.sort_values("alpha")
                     figA.add_trace(go.Scatter(
-                        x=grp["theta"], y=grp["S"], mode="lines+markers",
+                        x=grp["alpha"], y=grp["S"], mode="lines+markers",
                         name="candidates", marker=dict(size=9, color="tomato"),
                         line=dict(color="tomato"),
                         customdata=grp.index.to_numpy(),
@@ -622,14 +627,14 @@ with tab_step1:
                     if st.session_state.get("s1vdw_figA_prev") != idx:
                         row = df_init_plot.loc[idx]
                         st.session_state["s1vdw_current"] = {
-                            "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                            "label": f"Fig.2b click: alpha={row['theta']} a={row['a']} b={row['b']}",
+                            "alpha": float(row["alpha"]), "a": float(row["a"]), "b": float(row["b"]),
+                            "label": f"Fig.2b click: alpha={row['alpha']} a={row['a']} b={row['b']}",
                         }
                         st.session_state["s1vdw_figA_prev"] = idx
 
                 st.download_button(
                     "Download step1_init_params.csv (input for the DFT step below)",
-                    data=df_init[["a", "b", "theta"]].assign(status="NotYet").to_csv(index=False),
+                    data=df_init[["a", "b", "alpha"]].assign(status="NotYet").to_csv(index=False),
                     file_name="step1_init_params.csv", mime="text/csv",
                     key="dl_s1vdw_init",
                 )
@@ -637,7 +642,7 @@ with tab_step1:
                     st.dataframe(df_init, width="stretch")
 
                 labels = [
-                    f"alpha={r['theta']}  a={r['a']}  b={r['b']}  S={r['S']:.1f}"
+                    f"alpha={r['alpha']}  a={r['a']}  b={r['b']}  S={r['S']:.1f}"
                     + (f"  [{r['kind']}]" if "kind" in df_init.columns else "")
                     for _, r in df_init.iterrows()
                 ]
@@ -649,8 +654,8 @@ with tab_step1:
                     if st.session_state.get("s1vdw_sel_prev") != sel:
                         row = df_init.iloc[sel]
                         st.session_state["s1vdw_current"] = {
-                            "alpha": float(row["theta"]), "a": float(row["a"]), "b": float(row["b"]),
-                            "label": f"list pick: alpha={row['theta']} a={row['a']} b={row['b']}",
+                            "alpha": float(row["alpha"]), "a": float(row["a"]), "b": float(row["b"]),
+                            "label": f"list pick: alpha={row['alpha']} a={row['a']} b={row['b']}",
                         }
                         st.session_state["s1vdw_sel_prev"] = sel
 
@@ -761,7 +766,7 @@ with tab_step1:
             "dimer interaction energies)."
         ),
         prepare=(
-            "- `step1_init_params.csv` (columns: `a, b, theta, status`) — "
+            "- `step1_init_params.csv` (columns: `a, b, alpha, status`) — "
             "generated automatically by `--init` below, using the same vdW "
             "model as the pre-scan above. You don't need to write this by hand."
         ),
@@ -772,7 +777,7 @@ with tab_step1:
             "# --init (re)builds step1_init_params.csv; omit it on later runs\n"
             "# to keep hill-climbing from where step1.csv left off."
         ),
-        output="`<auto-dir>/step1.csv` — columns `a, b, theta, E, E_p1, E_p2, E_t, status, file_name`.",
+        output="`<auto-dir>/step1.csv` — columns `a, b, alpha, E, E_p1, E_p2, E_t, status, file_name`.",
         scripts_files="`step1.py`, `make_step1.py`, and `utils.py`",
     )
 
@@ -799,8 +804,8 @@ with tab_step1:
             "to cover the full range, matching the paper's Fig. 2(b). "
             "Click a point for its 9-molecule structure."
         )
-        if "theta" not in df.columns:
-            st.warning("Expected a 'theta' column in this CSV to classify branches.")
+        if "alpha" not in df.columns and "theta" not in df.columns:
+            st.warning("Expected an 'alpha' column in this CSV to classify branches.")
         else:
             df_branches = classify_and_fold_step1_results(df)
             if len(df_branches) == 0:
@@ -810,10 +815,10 @@ with tab_step1:
                 with col_fig2b:
                     fig2b = go.Figure()
                     for kind, grp in df_branches.groupby("kind"):
-                        grp = grp.sort_values("theta")
+                        grp = grp.sort_values("alpha")
                         color = _S1R_KIND_COLOR.get(kind, "gray")
                         fig2b.add_trace(go.Scatter(
-                            x=grp["theta"], y=grp["E"], mode="lines+markers",
+                            x=grp["alpha"], y=grp["E"], mode="lines+markers",
                             name=_S1R_KIND_LABEL.get(kind, kind),
                             line=dict(color=color), marker=dict(size=8, color=color),
                             hovertemplate="alpha=%{x}<br>E=%{y:.2f}<extra>"
@@ -829,18 +834,18 @@ with tab_step1:
                     pts_2b = event_2b.selection.points if (event_2b and event_2b.selection) else []
                     if pts_2b:
                         p0 = pts_2b[0]
-                        theta_sel, E_sel = p0.get("x"), p0.get("y")
-                        if theta_sel is not None and E_sel is not None:
+                        alpha_sel, E_sel = p0.get("x"), p0.get("y")
+                        if alpha_sel is not None and E_sel is not None:
                             match = df_branches[
-                                np.isclose(df_branches["theta"], theta_sel)
+                                np.isclose(df_branches["alpha"], alpha_sel)
                                 & np.isclose(df_branches["E"], E_sel)
                             ]
                             if len(match):
                                 r = match.iloc[0]
                                 st.session_state["s1fig2b_current"] = {
-                                    "alpha": float(r["theta"]), "a": float(r["a"]), "b": float(r["b"]),
+                                    "alpha": float(r["alpha"]), "a": float(r["a"]), "b": float(r["b"]),
                                     "label": f"clicked [{_S1R_KIND_LABEL.get(r['kind'], r['kind'])}]: "
-                                             f"alpha={r['theta']} a={r['a']} b={r['b']} E={r['E']:.2f}",
+                                             f"alpha={r['alpha']} a={r['a']} b={r['b']} E={r['E']:.2f}",
                                 }
                     with st.expander("Branches table"):
                         st.dataframe(df_branches, width="stretch")
@@ -852,8 +857,8 @@ with tab_step1:
                         current_2b = st.session_state.get("s1fig2b_current")
                         if current_2b is None and len(df_branches):
                             # The global minimum is physically identical whether
-                            # shown via its original theta (<=45) or its folded
-                            # mirror (theta -> 90-theta, a/b swapped) -- prefer
+                            # shown via its original alpha (<=45) or its folded
+                            # mirror (alpha -> 90-alpha, a/b swapped) -- prefer
                             # the unfolded one so the displayed alpha matches the
                             # commonly-cited value (e.g. ~25 deg) instead of its
                             # (equally correct but less recognizable) >45 mirror.
@@ -862,11 +867,11 @@ with tab_step1:
                             unfolded_tied = tied[~tied["folded"]]
                             best = (unfolded_tied if len(unfolded_tied) else tied).iloc[0]
                             current_2b = {
-                                "alpha": float(best["theta"]), "a": float(best["a"]), "b": float(best["b"]),
+                                "alpha": float(best["alpha"]), "a": float(best["a"]), "b": float(best["b"]),
                                 "label": f"default (min E) [{_S1R_KIND_LABEL.get(best['kind'], best['kind'])}]: "
-                                         f"alpha={best['theta']} a={best['a']} b={best['b']}",
+                                         f"alpha={best['alpha']} a={best['a']} b={best['b']}",
                             }
-                            # Persist this so Tab 3/Tab 4's own a/b/theta defaults
+                            # Persist this so Tab 3/Tab 4's own a/b/alpha defaults
                             # pick up the actual R-form optimum immediately, even
                             # before the user clicks a point here -- otherwise
                             # they'd fall back to an arbitrary placeholder instead
@@ -913,7 +918,7 @@ with tab_step2:
             ),
             prepare=(
                 "- `step2_init_params.csv`: **one row**, columns `a, b, "
-                "theta` — take the best (a, b) at your chosen alpha from "
+                "alpha` — take the best (a, b) at your chosen alpha from "
                 "**Tab 2**'s DFT results (`step1.csv`) and write it "
                 "yourself (no generator script for this one)."
             ),
@@ -1149,12 +1154,12 @@ with tab_step2:
                 "Step 2 (twist variant, → Type III packing with glide "
                 "symmetry): introduces the T-contact long-axis shift Rt and "
                 "the torsion A2, then re-optimizes (a, b) by hill-climbing "
-                f"at each fixed (theta, Rt, A2) (`{LEGACY_DIR}/step2_twist.py`; "
+                f"at each fixed (alpha, Rt, A2) (`{LEGACY_DIR}/step2_twist.py`; "
                 "E = 4·E_t + 2·E_p1)."
             ),
             prepare=(
-                "- `step2_twist_init_params.csv`: rows of `theta, Rt, A2, "
-                "a, b, status`. `theta` and starting `a, b` come from Step 1 "
+                "- `step2_twist_init_params.csv`: rows of `alpha, Rt, A2, "
+                "a, b, status`. `alpha` and starting `a, b` come from Step 1 "
                 "(**Tab 2**'s DFT results); `Rt` (twist shift) and `A2` "
                 "(torsion) are the new values you want to try (e.g. a grid "
                 "of A2 = 0..20°, since the paper's §2.4 reports optima "
@@ -1167,7 +1172,7 @@ with tab_step2:
                 "--monomer-name naphthalene \\\n    --num-nodes 4 --num-init 2"
             ),
             output=(
-                "`<auto-dir>/step2_twist.csv` — columns `a, b, theta, Rt, A2, "
+                "`<auto-dir>/step2_twist.csv` — columns `a, b, alpha, Rt, A2, "
                 "E, E_p1, E_t, status, file_name`."
             ),
             scripts_files="`step2_twist.py`, `make_step2_twist.py`, and `utils.py`",
@@ -1216,7 +1221,7 @@ with tab_step2:
                 a2c, rtc, ec = cols_lower_t["a2"], cols_lower_t["rt"], cols_lower_t["e"]
                 ac = cols_lower_t.get("a")
                 bc = cols_lower_t.get("b")
-                thc = cols_lower_t.get("theta")
+                thc = cols_lower_t.get("alpha", cols_lower_t.get("theta"))
                 df_conv = df.loc[df.groupby([a2c, rtc])[ec].idxmin()].reset_index(drop=True)
                 col_twist, col_twist3d = st.columns([2, 1])
                 with col_twist:
@@ -1313,7 +1318,7 @@ with tab_step3:
             "reimplementation (not a call into legacy step3_para_vdw.py "
             "itself; verified to reproduce its output numerically) that "
             "runs directly in this GUI: at fixed intralayer parameters "
-            "(a, b, theta, Rt, Rp), slide the upper layer by (Ra, Rb) and find "
+            "(a, b, alpha, Rt, Rp), slide the upper layer by (Ra, Rb) and find "
             "the vdW-limited interlayer distance z — this is the paper's "
             "Fig. 6(b–d) upper-panel V(x,y) = a·b·z map. Click a point (or one "
             "of the marked local minima) to preview the two-layer structure "
@@ -1514,7 +1519,7 @@ with tab_step3:
             what=(
                 "Step 3 (para variant) optimizes the interlayer c-vector "
                 "(cx, cy, cz) by 3×3×3 hill-climbing at fixed intralayer "
-                f"parameters (a, b, theta, Rt, Rp) (`{LEGACY_DIR}/step3_para.py`). "
+                f"parameters (a, b, alpha, Rt, Rp) (`{LEGACY_DIR}/step3_para.py`). "
                 "Each point computes 10 interlayer dimers; E averages the two "
                 "stacking patterns and sums the four T-shaped pairs. "
                 "**Rt/Rp are how this reaches the N-form** that Tab 3's "
@@ -1527,8 +1532,8 @@ with tab_step3:
                 "direction (intermediate phi_incl)."
             ),
             prepare=(
-                "- `step3_para_init_params.csv`: rows of `a, b, theta, Rt, Rp, "
-                "cx, cy, cz` (starting points). `a, b, theta` come from Step 1 "
+                "- `step3_para_init_params.csv`: rows of `a, b, alpha, Rt, Rp, "
+                "cx, cy, cz` (starting points). `a, b, alpha` come from Step 1 "
                 "(**Tab 2**'s DFT results). `Rt, Rp` are **not** hill-climbed "
                 "automatically (only cx, cy, cz are) — you supply the grid of "
                 "(Rt, Rp) values to try yourself: Rp = 0 rows explore the "
@@ -1543,7 +1548,7 @@ with tab_step3:
                 "--monomer-name pentacene \\\n    --num-nodes 4 --num-init 2"
             ),
             output=(
-                "`<auto-dir>/step3_para.csv` — columns `cx, cy, cz, a, b, theta, "
+                "`<auto-dir>/step3_para.csv` — columns `cx, cy, cz, a, b, alpha, "
                 "Rt, Rp, E, E_i01, E_ip1, E_ip2, E_it1..4, E_i02, E_ip3, E_ip4, "
                 "status, file_name`."
             ),
@@ -1573,7 +1578,7 @@ with tab_step3:
             "Same rigid-sphere interlayer contact model as Tab 4 para's vdW "
             "pre-scan, but with the twist torsion A2 applied to both "
             "intralayer clusters (Rp is implicitly 0 -- glide symmetric, "
-            "matching step3_twist.py's a, b, theta, Rt, A2 parameter set, "
+            "matching step3_twist.py's a, b, alpha, Rt, A2 parameter set, "
             "no separate Rp). Click a point (or a marked local minimum) to "
             "preview the two-layer structure and download it as a starting "
             "point for the DFT step below."
@@ -1750,8 +1755,8 @@ with tab_step3:
                 f"for the twisted (Type III) packing (`{LEGACY_DIR}/step3_twist.py`)."
             ),
             prepare=(
-                "- `step3_twist_init_params.csv`: rows of `a, b, theta, Rt, "
-                "A2, cx, cy, cz` (starting points). `a, b, theta, Rt, A2` "
+                "- `step3_twist_init_params.csv`: rows of `a, b, alpha, Rt, "
+                "A2, cx, cy, cz` (starting points). `a, b, alpha, Rt, A2` "
                 "come from the Step 2 twist result (**Tab 3**, twist "
                 "sub-tab) at the energy minimum; initial `cx, cy, cz` are a "
                 "guess (0 or small values) that the hill-climb will refine."
@@ -1775,7 +1780,7 @@ with tab_step3:
             "structure. Total E = Eintra(6) + Eint(near), taking the minimum "
             "of each at every A2. **Needs two CSVs, one in each box below:** "
             "(1) the re-optimized intralayer grid -- columns `A2, Rt, a, b, "
-            "E` (theta optional); (2) the interlayer scan, i.e. "
+            "E` (alpha optional); (2) the interlayer scan, i.e. "
             "step3_twist.csv -- columns `A2, cx, cy, cz, E`."
         )
         df_intra_d, src_intra_d = load_results_csv(
@@ -1826,7 +1831,7 @@ with tab_step3:
                         "b": [float(best_intra.loc[a2, b_id]) for a2 in common_a2],
                         "Rt": [float(best_intra.loc[a2, rt_id]) for a2 in common_a2],
                     })
-                    thc_d = cl_id.get("theta")
+                    thc_d = cl_id.get("alpha", cl_id.get("theta"))
                     df_total["theta"] = (
                         [float(best_intra.loc[a2, thc_d]) for a2 in common_a2] if thc_d
                         else _twist_theta
@@ -1987,7 +1992,7 @@ with tab_transfer:
             "are computed at B3LYP/6-31G* (paper METHOD)."
         ),
         prepare=(
-            "- `<auto-dir>/init_params.csv`: rows of `a, b, theta, A2, z` — "
+            "- `<auto-dir>/init_params.csv`: rows of `a, b, alpha, A2, z` — "
             "the representative arrangements (e.g. the R-form optimum from "
             "**Tab 2**'s DFT results, and any Type II/III/IV structures "
             "from **Tab 4**'s para/twist sub-tabs) you want J for."
@@ -2015,7 +2020,7 @@ with tab_transfer:
     st.subheader("Results — J per arrangement / contact type")
     st.caption(
         "Drop a CSV (e.g. result.txt converted to CSV with columns like "
-        "a, b, theta, J_t, J_p)."
+        "a, b, alpha, J_t, J_p)."
     )
     df, src = load_results_csv("s5_results", "transfer_integrals.csv")
     if df is not None:
@@ -2054,7 +2059,7 @@ with tab_transfer:
     st.caption(
         "Transfer integrals along the Fig. 2(b) branches (A2=0, z=0 at "
         "each alpha): run tcal_csv.py with one init_params.csv row per "
-        "(a, b, theta) point from Tab 2's HB/PS branches, "
+        "(a, b, alpha) point from Tab 2's HB/PS branches, "
         "then combine init_params.csv with result.txt's J columns (same "
         "row order) into one CSV. Expected columns: alpha (or theta), J_t, "
         "J_p, and optionally kind (e.g. HB/PS) to color "
@@ -2215,7 +2220,7 @@ with tab_transfer:
         "single z per row is enough — the same z used in Tab 3's "
         "Et(z)/Ep(z) scan feeds tcal_csv.py's init_params.csv `z` "
         "column). Expected columns: theta_incl (or z), J_t, J_p, and "
-        "optionally a, b, theta (fixed at the Step 1 optimum) for the "
+        "optionally a, b, alpha (fixed at the Step 1 optimum) for the "
         "3D structure preview on click."
     )
     df_c, src_c = load_results_csv("s5c_results", "transfer_integrals_thetaincl.csv")
@@ -2230,7 +2235,7 @@ with tab_transfer:
             jtc_, jpc_ = cols_lower_c["j_t"], cols_lower_c["j_p"]
             ac_ = cols_lower_c.get("a")
             bc_ = cols_lower_c.get("b")
-            thc_ = cols_lower_c.get("theta")
+            thc_ = cols_lower_c.get("alpha", cols_lower_c.get("theta"))
             grp_c = df_c.sort_values(xc_)
             col_c_plot, col_c_3d = st.columns([2, 1])
             with col_c_plot:
@@ -2272,7 +2277,7 @@ with tab_transfer:
                 if mol2 is None:
                     st.caption("Select a molecule using the picker above.")
                 elif not (ac_ and bc_ and thc_):
-                    st.caption("Need `a`, `b`, `theta` columns in the CSV for a 3D preview.")
+                    st.caption("Need `a`, `b`, `alpha` columns in the CSV for a 3D preview.")
                 else:
                     current_c = st.session_state.get("s5c_current")
                     if current_c is None and len(grp_c):

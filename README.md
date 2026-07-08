@@ -239,9 +239,9 @@ same idea but one subdirectory per arrangement (from
 
 ```
 your-working-dir/
-├── init_params.csv                # arrangements to compute (a, b, theta, A2, z)
+├── init_params.csv                # arrangements to compute (a, b, alpha, A2, z)
 ├── result.txt                     # summarized transfer integrals, after --result
-└── a=.._b=.._theta=.._A2=.._z=../ # one folder per arrangement
+└── a=.._b=.._alpha=.._A2=.._z=../ # one folder per arrangement
     ├── job.sh, tcal_1.py          # copied in automatically
     ├── test_t/test_p*.gjf         # Gaussian16 inputs (T-shaped / slipped-parallel)
     ├── test_t/test_p*.log         # Gaussian16 outputs

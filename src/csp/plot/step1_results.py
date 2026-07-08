@@ -1,13 +1,13 @@
 """Reconstruct the paper's Fig. 2b-style branch classification from a
 Step 1 DFT-D hill-climb history (step1.csv).
 
-step1.csv only records every (theta, a, b) point visited plus its energy
+step1.csv only records every (alpha, a, b) point visited plus its energy
 -- not which structural branch (a-stack / b-stack / local min) each point
 belongs to, nor which point each branch converged to. Both are recovered
 directly from the data itself, with no dependency on re-running any vdW
 model or knowing which molecule/monomer produced the CSV:
 
-- At each theta, pivot the visited (a, b) into a 2D energy grid and find
+- At each alpha, pivot the visited (a, b) into a 2D energy grid and find
   its local minima (`scipy.ndimage.minimum_filter`, the same approach
   used for the other 2D maps in this app) -- these *are* the converged
   branches, directly, since the DFT hill-climb only ever stops at a local
@@ -18,9 +18,9 @@ model or knowing which molecule/monomer produced the CSV:
   'local_min' -- this reproduces step1a_scan's kind labels without
   calling it.
 
-Polyacenes are also exactly symmetric under theta -> 90-theta with a and b
+Polyacenes are also exactly symmetric under alpha -> 90-alpha with a and b
 swapped (same physical structure, axes relabeled). Reflecting the
-computed branches through this symmetry extends a theta in [5, 45] scan
+computed branches through this symmetry extends an alpha in [5, 45] scan
 to the full [5, 85] range shown in the paper's Fig. 2b, with no extra
 computation. `kind` is kept fixed across this fold (not re-derived from
 the swapped a/b) precisely because it's a *physical*-identity label
@@ -29,9 +29,14 @@ assigned it in the first place is geometric and would flip under the a/b
 swap, but the branch itself doesn't change identity just because its axes
 got relabeled. For the same reason, KIND_LABEL only says "HB"/"PS", not
 "HB (b-stack)"/"PS (a-stack)" -- the a-stack/b-stack (smallest-a/
-largest-a) description is only true for the unfolded half (theta <= 45);
+largest-a) description is only true for the unfolded half (alpha <= 45);
 past the fold it's backwards, so it's dropped from the display label
 entirely rather than shown-and-wrong for half the range.
+
+Accepts either an `alpha` or a legacy `theta` column on input (both mean
+the same herringbone half-angle -- `theta` was Ono's original CSV column
+name; renamed to `alpha` to match the paper, see README/spec history).
+Output is always `alpha`.
 """
 from __future__ import annotations
 
@@ -43,12 +48,12 @@ KIND_LABEL = {"b_contact": "HB", "a_contact": "PS", "local_min": "local min"}
 KIND_COLOR = {"b_contact": "#1f77b4", "a_contact": "#d62728", "local_min": "#2ca02c"}
 
 
-def _local_minima_at_theta(df_theta: pd.DataFrame) -> pd.DataFrame:
-    """Local minima of E over the visited (a, b) grid at one fixed theta,
+def _local_minima_at_alpha(df_alpha: pd.DataFrame) -> pd.DataFrame:
+    """Local minima of E over the visited (a, b) grid at one fixed alpha,
     labeled by position (smallest a -> a_contact, largest a -> b_contact,
     else local_min).
     """
-    pivot = df_theta.pivot_table(index="b", columns="a", values="E", aggfunc="min")
+    pivot = df_alpha.pivot_table(index="b", columns="a", values="E", aggfunc="min")
     grid = pivot.values
     is_min = (grid == minimum_filter(grid, size=3)) & np.isfinite(grid)
     bi, ai = np.where(is_min)
@@ -69,18 +74,22 @@ def _local_minima_at_theta(df_theta: pd.DataFrame) -> pd.DataFrame:
 
 
 def classify_and_fold_step1_results(df_results: pd.DataFrame) -> pd.DataFrame:
-    """Branch-classified, theta<->90-theta folded Step 1 DFT-D results.
+    """Branch-classified, alpha<->90-alpha folded Step 1 DFT-D results.
 
-    `df_results` is step1.csv (columns a, b, theta, E, ...). Returns one row
-    per (branch, fold) with columns theta, a, b, E, kind ('b_contact' /
+    `df_results` is step1.csv (columns a, b, alpha, E, ... -- or the legacy
+    `theta` column name, accepted as an alias). Returns one row per
+    (branch, fold) with columns alpha, a, b, E, kind ('b_contact' /
     'a_contact' / 'local_min'), folded (bool) -- ready for a Fig. 2b-style
     plot colored by `kind`.
     """
+    if "alpha" not in df_results.columns and "theta" in df_results.columns:
+        df_results = df_results.rename(columns={"theta": "alpha"})
+
     rows = []
-    for theta, df_theta in df_results.groupby("theta"):
-        branches = _local_minima_at_theta(df_theta)
+    for alpha, df_alpha in df_results.groupby("alpha"):
+        branches = _local_minima_at_alpha(df_alpha)
         for r in branches.itertuples():
-            rows.append({"theta": round(float(theta), 1), "a": float(r.a), "b": float(r.b),
+            rows.append({"alpha": round(float(alpha), 1), "a": float(r.a), "b": float(r.b),
                          "E": float(r.E), "kind": r.kind, "folded": False})
 
     df_branches = pd.DataFrame(rows)
@@ -88,10 +97,10 @@ def classify_and_fold_step1_results(df_results: pd.DataFrame) -> pd.DataFrame:
         return df_branches
 
     df_folded = df_branches.copy()
-    df_folded["theta"] = 90.0 - df_folded["theta"]
+    df_folded["alpha"] = 90.0 - df_folded["alpha"]
     df_folded["a"], df_folded["b"] = df_branches["b"].values, df_branches["a"].values
     # `kind` is NOT re-derived from the swapped (a, b) here: folding a branch
-    # to theta -> 90-theta with a/b swapped is the *same physical structure*
+    # to alpha -> 90-alpha with a/b swapped is the *same physical structure*
     # under axis relabeling (HB stays HB, PS stays PS), even though the
     # a_contact/b_contact criterion itself ("smallest-a" vs "largest-a") is
     # purely geometric and would flip if reapplied to the swapped values.
@@ -100,5 +109,5 @@ def classify_and_fold_step1_results(df_results: pd.DataFrame) -> pd.DataFrame:
     df_folded["folded"] = True
 
     return pd.concat([df_branches, df_folded], ignore_index=True).sort_values(
-        ["kind", "theta"]
+        ["kind", "alpha"]
     ).reset_index(drop=True)
