@@ -203,7 +203,7 @@ def heatmap_section(
 
 def render_molecule_3d(symbols, coords, comment: str, key_suffix: str, style_key: str) -> None:
     style = st.radio(
-        "Style", ["Capped sticks", "Space fill"], horizontal=True, key=style_key
+        "Style", ["Space fill", "Capped sticks"], horizontal=True, key=style_key
     )
     xyz_str = to_xyz_string(symbols, coords, comment=comment)
     html = render_3d_html(
@@ -267,6 +267,47 @@ _SETUP_SCHEDULER = (
 
 
 # ══════════════════════════════════════════════════════════
+#  Persistent molecule picker — visible on every tab, so switching the
+#  active molecule doesn't require flipping back to Tab 1.
+# ══════════════════════════════════════════════════════════
+available_presets = [
+    m for m in PRESET_MOLECULES if (MOLECULE_DIR / f"{m}.xyz").exists()
+]
+pick_col1, pick_col2, pick_col3 = st.columns([1, 2, 3])
+molecule = None
+with pick_col1:
+    mol_source = st.radio(
+        "Source", ["Preset", "Upload custom XYZ"], horizontal=True, key="mol_source_top",
+    )
+with pick_col2:
+    if mol_source == "Preset":
+        if not available_presets:
+            st.warning(f"No preset XYZ files found in {MOLECULE_DIR}")
+        else:
+            preset_name = st.selectbox("Molecule", available_presets, key="mol_preset_top")
+            molecule = load_molecule(preset_name, molecule_dir=MOLECULE_DIR)
+    else:
+        uploaded = st.file_uploader(
+            "Upload a monomer XYZ file", type=["xyz"], key="mol_upload_top",
+        )
+        if uploaded is not None:
+            with tempfile.NamedTemporaryFile(
+                suffix=".xyz", mode="w", delete=False, encoding="utf-8"
+            ) as tf:
+                tf.write(uploaded.getvalue().decode("utf-8"))
+                tmp_path = tf.name
+            molecule = load_molecule(tmp_path)
+            molecule.name = Path(uploaded.name).stem
+with pick_col3:
+    if molecule is not None:
+        st.session_state["molecule"] = molecule
+        st.caption(f"Active molecule: **{molecule.name}** — {molecule.n_atoms} atoms")
+    else:
+        st.caption("No molecule selected yet.")
+st.divider()
+
+
+# ══════════════════════════════════════════════════════════
 #  Tabs
 # ══════════════════════════════════════════════════════════
 tab_setup, tab_step1, tab_step2, tab_step3, tab_transfer = st.tabs([
@@ -282,36 +323,18 @@ tab_setup, tab_step1, tab_step2, tab_step3, tab_transfer = st.tabs([
 #  Tab 1: Molecule Setup
 # ══════════════════════════════════════════════════════════
 with tab_setup:
+    st.caption(
+        "The molecule picker above (visible on every tab) is the shared "
+        "source for Tabs 2-5 below -- no need to come back here just to "
+        "switch molecules. This tab holds the less-frequently-changed "
+        "settings: exporting the monomer CSV, the vdW radius table, and a "
+        "3D sanity-check view."
+    )
     col_pick, col_view = st.columns([1, 1])
+    molecule = st.session_state.get("molecule")
 
     with col_pick:
-        st.subheader("Molecule")
-        available_presets = [
-            m for m in PRESET_MOLECULES if (MOLECULE_DIR / f"{m}.xyz").exists()
-        ]
-        source = st.radio("Source", ["Preset", "Upload custom XYZ"], horizontal=True)
-
-        molecule = None
-        if source == "Preset":
-            if not available_presets:
-                st.warning(f"No preset XYZ files found in {MOLECULE_DIR}")
-            else:
-                preset_name = st.selectbox("Preset molecule", available_presets)
-                molecule = load_molecule(preset_name, molecule_dir=MOLECULE_DIR)
-        else:
-            uploaded = st.file_uploader("Upload a monomer XYZ file", type=["xyz"])
-            if uploaded is not None:
-                with tempfile.NamedTemporaryFile(
-                    suffix=".xyz", mode="w", delete=False, encoding="utf-8"
-                ) as tf:
-                    tf.write(uploaded.getvalue().decode("utf-8"))
-                    tmp_path = tf.name
-                molecule = load_molecule(tmp_path)
-                molecule.name = Path(uploaded.name).stem
-
         if molecule is not None:
-            st.session_state["molecule"] = molecule
-            st.caption(f"**{molecule.name}** — {molecule.n_atoms} atoms")
             st.download_button(
                 "Download monomer CSV (X,Y,Z,R — input for the legacy CLI scripts)",
                 data=monomer_csv(molecule),
@@ -334,7 +357,7 @@ with tab_setup:
     with col_view:
         st.subheader("3D viewer")
         if molecule is None:
-            st.caption("Select or upload a molecule to preview it here.")
+            st.caption("Select or upload a molecule above to preview it here.")
         else:
             render_molecule_3d(
                 molecule.symbols, molecule.coords,
@@ -367,7 +390,7 @@ with tab_step1:
     alpha_step = c3.number_input("alpha step (deg)", value=5.0, min_value=0.5, key="s1vdw_astep")
 
     if mol2 is None:
-        st.info("Select a molecule in Tab 1 first.")
+        st.info("Select a molecule using the picker above first.")
     elif st.button(f"Run vdW Scan ({mol2.name})", key="s1vdw_run"):
         alphas = list(np.arange(alpha_min, alpha_max + 1e-9, alpha_step))
         prog = st.progress(0.0, text="Scanning...")
@@ -448,7 +471,7 @@ with tab_step1:
         def _render_preview(df: pd.DataFrame, key_suffix: str) -> None:
             st.markdown("**Structure preview**")
             if mol2 is None:
-                st.caption("Select a molecule in Tab 1.")
+                st.caption("Select a molecule using the picker above.")
                 return
             current = st.session_state.get("s1vdw_current")
             if current is None:
@@ -766,7 +789,7 @@ with tab_step1:
                 with col_3d_fig2b:
                     st.markdown("**Structure preview**")
                     if mol2 is None:
-                        st.caption("Select a molecule in Tab 1 for the 3D preview.")
+                        st.caption("Select a molecule using the picker above for the 3D preview.")
                     else:
                         current_2b = st.session_state.get("s1fig2b_current")
                         if current_2b is None and len(df_branches):
@@ -912,7 +935,7 @@ with tab_step2:
                 with col_s2_3d:
                     st.markdown("**Structure preview**")
                     if mol2 is None:
-                        st.caption("Select a molecule in Tab 1.")
+                        st.caption("Select a molecule using the picker above.")
                     else:
                         current_s2 = st.session_state.get("s2_current") or {
                             "kind": "t", "z": 0.0, "label": "default: E_t at z=0",
@@ -1029,7 +1052,7 @@ with tab_step2:
                     with col_map3d:
                         st.markdown("**Structure preview**")
                         if mol2 is None:
-                            st.caption("Select a molecule in Tab 1.")
+                            st.caption("Select a molecule using the picker above.")
                         else:
                             current_5b = st.session_state.get("s2fig5b_current") or {
                                 "zt": 0.0, "zp": 0.0, "label": "default: zt=0 zp=0 (flat R-form)",
@@ -1193,7 +1216,7 @@ with tab_step2:
                 with col_twist3d:
                     st.markdown("**Structure preview**")
                     if mol2 is None:
-                        st.caption("Select a molecule in Tab 1.")
+                        st.caption("Select a molecule using the picker above.")
                     else:
                         current_t = st.session_state.get("s4a_current")
                         if current_t is None and len(df_conv):
@@ -1257,17 +1280,34 @@ with tab_step3:
         )
 
         if mol3 is None:
-            st.info("Select a molecule in Tab 1 first.")
-        elif st.button(f"Run interlayer vdW scan ({mol3.name})", key="s3vdw_run"):
-            with st.spinner("Scanning..."):
-                df_vdw = interlayer_vdw_scan(
-                    mol3, a=s3_a, b=s3_b, theta=s3_theta, Rt=s3_rt, Rp=s3_rp,
-                    radii_overrides=st.session_state.get("vdw_radii_overrides"),
-                )
-            st.session_state["s3vdw_df"] = df_vdw
-            st.session_state["s3vdw_params"] = {
-                "a": s3_a, "b": s3_b, "theta": s3_theta, "Rt": s3_rt, "Rp": s3_rp,
-            }
+            st.info("Select a molecule using the picker above first.")
+        else:
+            # Auto-run once with the current inputs (Fig. 6(b)'s parameters
+            # by default) so the map shows up without an extra click, same
+            # as the bundled-sample sections elsewhere in this app -- but
+            # only when nothing has been scanned yet this session, so it
+            # never overrides a scan the user already ran or is about to
+            # change inputs for.
+            auto_run = (
+                "s3vdw_df" not in st.session_state
+                and mol3.name == "pentacene"
+            )
+            if auto_run or st.button(f"Run interlayer vdW scan ({mol3.name})", key="s3vdw_run"):
+                with st.spinner("Scanning..."):
+                    df_vdw = interlayer_vdw_scan(
+                        mol3, a=s3_a, b=s3_b, theta=s3_theta, Rt=s3_rt, Rp=s3_rp,
+                        radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                    )
+                st.session_state["s3vdw_df"] = df_vdw
+                st.session_state["s3vdw_params"] = {
+                    "a": s3_a, "b": s3_b, "theta": s3_theta, "Rt": s3_rt, "Rp": s3_rp,
+                }
+                if auto_run:
+                    st.caption(
+                        "Showing the Fig. 6(b) default (pentacene R-form) "
+                        "-- change the inputs above and click Run for your "
+                        "own scan."
+                    )
 
         df_vdw = st.session_state.get("s3vdw_df")
         params3 = st.session_state.get("s3vdw_params")
@@ -1478,36 +1518,59 @@ with tab_step3:
             "point for the DFT step below."
         )
         mol3t = st.session_state.get("molecule")
-        s4a_current = st.session_state.get("s4a_current") or {}
+        # Defaults are naphthalene's Fig. 6(c) G-form parameters (paper SI
+        # Table S1, Type III calc row: a=5.8, b=7.5, alpha=65, ΔZT=1.6),
+        # A2=0 since Fig. 6(c)'s V(x,y) map itself is computed *before* the
+        # twist optimization introduced in Fig. 7/Sect. 2.4. Deliberately NOT
+        # falling back to Tab 3 twist's s4a_current here (unlike Tab 4 para's
+        # s1_current pattern) -- s4a_current is auto-populated the instant
+        # Tab 3 twist's own sample map renders (its min-E point), so a
+        # fallback to it would silently override these Fig. 6(c) defaults
+        # with Tab 3's own sample values (a=6.0, b=7.2) every time -- numbers
+        # easy to mistake for Fig. 6(b)'s pentacene (7.2, 6.0) at a glance.
         c1t, c2t, c3t = st.columns(3)
-        s3t_a = c1t.number_input("a (Å)", value=float(s4a_current.get("a", _twist_a)), key="s3twist_a")
-        s3t_b = c2t.number_input("b (Å)", value=float(s4a_current.get("b", _twist_b)), key="s3twist_b")
+        s3t_a = c1t.number_input("a (Å)", value=5.8, key="s3twist_a")
+        s3t_b = c2t.number_input("b (Å)", value=7.5, key="s3twist_b")
         s3t_theta = c3t.number_input(
-            "theta (deg, from Step 1)",
-            value=float(s4a_current.get("theta", _twist_theta)), key="s3twist_theta",
+            "theta (deg, from Step 1)", value=65.0, key="s3twist_theta",
         )
         c4t, c5t = st.columns(2)
         s3t_rt = c4t.number_input(
-            "Rt (Å, T-contact long-axis shift)",
-            value=float(s4a_current.get("rt", 0.0)), step=0.1, key="s3twist_rt",
+            "Rt (Å, T-contact long-axis shift)", value=1.6, step=0.1, key="s3twist_rt",
         )
         s3t_a2 = c5t.number_input(
-            "A2 (deg, twist torsion, from Tab 3 twist)",
-            value=float(s4a_current.get("a2", 0.0)), step=1.0, key="s3twist_a2",
+            "A2 (deg, twist torsion, from Tab 3 twist)", value=0.0, step=1.0, key="s3twist_a2",
         )
 
         if mol3t is None:
-            st.info("Select a molecule in Tab 1 first.")
-        elif st.button(f"Run interlayer vdW scan ({mol3t.name})", key="s3twist_run"):
-            with st.spinner("Scanning..."):
-                df_vdw_t = interlayer_vdw_scan(
-                    mol3t, a=s3t_a, b=s3t_b, theta=s3t_theta, Rt=s3t_rt, Rp=0.0, A2=s3t_a2,
-                    radii_overrides=st.session_state.get("vdw_radii_overrides"),
-                )
-            st.session_state["s3twist_df"] = df_vdw_t
-            st.session_state["s3twist_params"] = {
-                "a": s3t_a, "b": s3t_b, "theta": s3t_theta, "Rt": s3t_rt, "A2": s3t_a2,
-            }
+            st.info("Select a molecule using the picker above first.")
+        else:
+            # Auto-run once with the current inputs (Fig. 6(c)'s parameters
+            # by default) so the map shows up without an extra click, same
+            # as the bundled-sample sections elsewhere in this app -- but
+            # only when nothing has been scanned yet this session, so it
+            # never overrides a scan the user already ran or is about to
+            # change inputs for.
+            auto_run_t = (
+                "s3twist_df" not in st.session_state
+                and mol3t.name == "naphthalene"
+            )
+            if auto_run_t or st.button(f"Run interlayer vdW scan ({mol3t.name})", key="s3twist_run"):
+                with st.spinner("Scanning..."):
+                    df_vdw_t = interlayer_vdw_scan(
+                        mol3t, a=s3t_a, b=s3t_b, theta=s3t_theta, Rt=s3t_rt, Rp=0.0, A2=s3t_a2,
+                        radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                    )
+                st.session_state["s3twist_df"] = df_vdw_t
+                st.session_state["s3twist_params"] = {
+                    "a": s3t_a, "b": s3t_b, "theta": s3t_theta, "Rt": s3t_rt, "A2": s3t_a2,
+                }
+                if auto_run_t:
+                    st.caption(
+                        "Showing the Fig. 6(c) default (naphthalene G-form) "
+                        "-- change the inputs above and click Run for your "
+                        "own scan."
+                    )
 
         df_vdw_t = st.session_state.get("s3twist_df")
         params3t = st.session_state.get("s3twist_params")
@@ -1669,8 +1732,8 @@ with tab_step3:
                     "This sample is Ono's real naphthalene data (both CSVs "
                     "share the same re-optimized (A2, Rt, a, b) per point, "
                     "confirmed by joining them here). Select naphthalene in "
-                    "Tab 1 for the 3D preview to match the plotted lattice "
-                    "constants."
+                    "the picker above for the 3D preview to match the "
+                    "plotted lattice constants."
                 )
             cl_id = {c.lower(): c for c in df_intra_d.columns}
             cl_er = {c.lower(): c for c in df.columns}
@@ -1766,7 +1829,7 @@ with tab_step3:
                     with col_d_3d:
                         st.markdown("**Structure preview**")
                         if mol2 is None:
-                            st.caption("Select a molecule in Tab 1.")
+                            st.caption("Select a molecule using the picker above.")
                         else:
                             current_d = st.session_state.get("s4d_current")
                             if current_d is None:
@@ -2044,7 +2107,7 @@ with tab_transfer:
             with col_b_3d:
                 st.markdown("**Structure preview**")
                 if mol2 is None:
-                    st.caption("Select a molecule in Tab 1.")
+                    st.caption("Select a molecule using the picker above.")
                 elif not (ab_ and bb_):
                     st.caption("Need `a`, `b` columns in the CSV for a 3D preview.")
                 else:
@@ -2142,7 +2205,7 @@ with tab_transfer:
             with col_c_3d:
                 st.markdown("**Structure preview**")
                 if mol2 is None:
-                    st.caption("Select a molecule in Tab 1.")
+                    st.caption("Select a molecule using the picker above.")
                 elif not (ac_ and bc_ and thc_):
                     st.caption("Need `a`, `b`, `theta` columns in the CSV for a 3D preview.")
                 else:

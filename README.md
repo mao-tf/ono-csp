@@ -29,7 +29,50 @@ under a second. The DFT-D refinement steps need Gaussian16 and are meant
 to run on an HPC cluster; the GUI shows the exact CLI commands for each
 step and displays whatever result CSV you drag & drop back in.
 
+## Getting the code (no git experience needed)
+
+You don't need to know git to try this out — just download a snapshot of
+the code as a zip file:
+
+1. Go to <https://github.com/mao-tf/ono-csp> in your browser.
+2. Click the green **Code** button, then **Download ZIP**.
+3. Unzip it wherever you like (double-click it on Mac/Windows). You'll
+   get a folder named `ono-csp-main`.
+4. Open a terminal (**Terminal** app on Mac, **PowerShell** or
+   **Command Prompt** on Windows) and move into that folder, e.g.:
+   ```bash
+   cd ~/Downloads/ono-csp-main
+   ```
+5. Continue with **Install** below.
+
+If you later want to fetch updates without re-downloading the whole zip
+each time, it's worth installing git instead (one-time setup):
+
+- Mac: open Terminal and run `git --version` — if it's not installed,
+  macOS will prompt you to install the Xcode Command Line Tools
+  automatically.
+- Windows: install [Git for Windows](https://git-scm.com/download/win),
+  then use **Git Bash** as your terminal.
+- Then, once, download the code with:
+  ```bash
+  git clone https://github.com/mao-tf/ono-csp.git
+  cd ono-csp
+  ```
+- Any time later, get the newest updates with:
+  ```bash
+  git pull
+  ```
+  (run this from inside the `ono-csp` folder)
+
 ## Install
+
+Requires [Python](https://www.python.org/) 3.10+. Either way below gives
+you an isolated environment so this project's dependencies don't clash
+with anything else on your machine.
+
+**With conda** (install
+[Miniconda](https://docs.conda.io/en/latest/miniconda.html) first if you
+don't have it):
 
 ```bash
 conda create -n csp python=3.10
@@ -38,11 +81,25 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Requires Python ≥ 3.10. For just the vdW-scan/structure-building parts of
-the package (no GUI), the core dependencies (`numpy`, `pandas`, `scipy`,
-`pyyaml`) are enough — see `pyproject.toml`'s `[project.optional-dependencies]`
-for the `viz` extras (`streamlit`, `plotly`, `py3Dmol`, `matplotlib`)
-needed for the GUI itself.
+**Without conda**, using Python's built-in `venv` instead (install
+[Python](https://www.python.org/downloads/) 3.10+ first if you don't have
+it):
+
+```bash
+python3 -m venv csp-env
+source csp-env/bin/activate      # Windows: csp-env\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+```
+
+Either way, `pip install -r requirements.txt` pulls in everything the GUI
+needs (including Streamlit itself) — no separate install step required.
+
+For just the vdW-scan/structure-building parts of the package (no GUI),
+the core dependencies (`numpy`, `pandas`, `scipy`, `pyyaml`) are enough —
+see `pyproject.toml`'s `[project.optional-dependencies]` for the `viz`
+extras (`streamlit`, `plotly`, `py3Dmol`, `matplotlib`) needed for the GUI
+itself.
 
 ## Quickstart
 
@@ -50,12 +107,13 @@ needed for the GUI itself.
 streamlit run app.py
 ```
 
-This opens a 5-tab GUI:
+This opens a 5-tab GUI. A molecule picker (preset polyacene or your own
+uploaded XYZ) sits above the tabs and applies everywhere — no need to
+switch tabs just to change molecules.
 
-1. **Molecule Setup** — pick a preset polyacene (naphthalene, anthracene,
-   tetracene, pentacene, hexacene) or upload your own monomer XYZ, adjust
-   van der Waals radii, and preview it in 3D. Download the monomer CSV
-   needed by the CLI scripts below.
+1. **Molecule Setup** — vdW radius table, a 3D sanity-check view of the
+   currently picked molecule, and a monomer CSV download needed by the
+   CLI scripts below.
 2. **Step 1 – Intralayer** — runs the vdW rough scan live in the GUI
    (a few seconds), showing candidate (a, b, α) combinations and a
    9-molecule cluster preview. For the DFT-D refinement, drop the
