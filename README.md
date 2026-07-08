@@ -66,6 +66,16 @@ each time, it's worth installing git instead (one-time setup):
 
 ## Install
 
+**Run every command below from inside the project folder** (the one
+from **Getting the code** above — `ono-csp-main` or `ono-csp`, whichever
+you ended up with). If you're not sure you're still there, check with:
+
+```bash
+ls pyproject.toml    # should print "pyproject.toml", not an error
+```
+
+If that errors, `cd` into the folder first (e.g. `cd ~/Downloads/ono-csp-main`).
+
 Requires [Python](https://www.python.org/) 3.10+. Either way below gives
 you an isolated environment so this project's dependencies don't clash
 with anything else on your machine.
@@ -120,6 +130,9 @@ extras (`streamlit`, `plotly`, `py3Dmol`, `matplotlib`) needed for the GUI
 itself.
 
 ## Quickstart
+
+Still in the same terminal as the Install step above (same folder, same
+activated environment)? Just run:
 
 ```bash
 streamlit run app.py
