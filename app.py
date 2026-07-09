@@ -1331,16 +1331,19 @@ with tab_step3:
             "paper's SI Table S2 (Pentacene Type I, 'calc' row)."
         )
         mol3 = st.session_state.get("molecule")
-        s1_current = st.session_state.get("s1vdw_current") or {}
-        # Fallback defaults: pentacene's R-form (Type I) parameters from the
-        # paper's SI Table S2 (a=7.2, b=6.0, alpha=25 deg), used when Tab 2
-        # hasn't been run this session -- a real point instead of a made-up
-        # placeholder.
+        # Defaults are pentacene's R-form (Type I) parameters from the paper's
+        # SI Table S2 (a=7.2, b=6.0, alpha=25 deg, Rt=Rp=0) -- i.e. Fig. 6(b),
+        # matching the citation caption above. Deliberately NOT inheriting
+        # Tab 2's s1vdw_current here: that gets auto-populated with Tab 2's
+        # min-S candidate (a different alpha, e.g. 20 for the sample, or
+        # whatever a live scan last picked) the moment Tab 2's results render,
+        # which would silently override these Fig. 6(b) values and contradict
+        # the caption. (Same reasoning as the twist sub-tab's fixed defaults.)
         c1, c2, c3 = st.columns(3)
-        s3_a = c1.number_input("a (Å)", value=float(s1_current.get("a", 7.2)), key="s3vdw_a")
-        s3_b = c2.number_input("b (Å)", value=float(s1_current.get("b", 6.0)), key="s3vdw_b")
+        s3_a = c1.number_input("a (Å)", value=7.2, key="s3vdw_a")
+        s3_b = c2.number_input("b (Å)", value=6.0, key="s3vdw_b")
         s3_theta = c3.number_input(
-            "alpha (deg, from Step 1)", value=float(s1_current.get("alpha", 25.0)), key="s3vdw_theta"
+            "alpha (deg, from Step 1)", value=25.0, key="s3vdw_theta"
         )
         c4, c5 = st.columns(2)
         s3_rt = c4.number_input(
@@ -1618,13 +1621,11 @@ with tab_step3:
         # Defaults are naphthalene's Fig. 6(c) G-form parameters (paper SI
         # Table S1, Type III calc row: a=5.8, b=7.5, alpha=65, ΔZT=1.6),
         # A2=0 since Fig. 6(c)'s V(x,y) map itself is computed *before* the
-        # twist optimization introduced in Fig. 7/Sect. 2.4. Deliberately NOT
-        # falling back to Tab 3 twist's s4a_current here (unlike Tab 4 para's
-        # s1_current pattern) -- s4a_current is auto-populated the instant
-        # Tab 3 twist's own sample map renders (its min-E point), so a
-        # fallback to it would silently override these Fig. 6(c) defaults
-        # with Tab 3's own sample values (a=6.0, b=7.2) every time -- numbers
-        # easy to mistake for Fig. 6(b)'s pentacene (7.2, 6.0) at a glance.
+        # twist optimization introduced in Fig. 7/Sect. 2.4. Like Tab 4 para,
+        # these are fixed literals -- deliberately NOT inheriting Tab 3
+        # twist's s4a_current, which is auto-populated with Tab 3's own
+        # min-E sample point (a=6.0, b=7.2) the instant that map renders and
+        # would otherwise silently override these Fig. 6(c) values.
         c1t, c2t, c3t = st.columns(3)
         s3t_a = c1t.number_input("a (Å)", value=5.8, key="s3twist_a")
         s3t_b = c2t.number_input("b (Å)", value=7.5, key="s3twist_b")
