@@ -937,12 +937,16 @@ with tab_step2:
             if {"z", "et", "ep"} <= set(cols_lower):
                 zc, etc, epc = cols_lower["z"], cols_lower["et"], cols_lower["ep"]
                 st.caption(
-                    "Et(z) and Ep(z) are independent dimer scans (T-shaped "
-                    "neighbor at (a/2, b/2, z); slipped-parallel neighbor at "
-                    "(0, b, z)). Note there's no single '4·Et+2·Ep' curve to "
-                    "show here in general -- that combination only holds for "
-                    "the glide-symmetric G-form (same z on every contact); "
-                    "the Fig. 5(b)-style map below combines Et/Ep at "
+                    "**This reproduces the paper's SI Fig. S6(b)** (T-shaped "
+                    "contact: left panel; slipped-parallel contact: right "
+                    "panel) — variation in interaction energy with "
+                    "long-axis sliding z, for pentacene. Et(z) and Ep(z) are "
+                    "independent dimer scans (T-shaped neighbor at (a/2, "
+                    "b/2, z); slipped-parallel neighbor at (0, b, z)). Note "
+                    "there's no single '4·Et+2·Ep' curve to show here in "
+                    "general -- that combination only holds for the "
+                    "glide-symmetric G-form (same z on every contact); the "
+                    "Fig. 5(b)-style map below combines Et/Ep at "
                     "*independent* z per contact to cover the N-form too."
                 )
                 _s2_default = (
