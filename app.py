@@ -933,20 +933,22 @@ with tab_step2:
         df, src = load_results_csv("s2_results", "step2_para.csv")
         if df is not None:
             source_badge(src)
+            st.info(
+                "**This reproduces the paper's SI Fig. S6(b)** (T-shaped "
+                "contact: left panel; slipped-parallel contact: right "
+                "panel) — variation in interaction energy with long-axis "
+                "sliding z, for pentacene."
+            )
             cols_lower = {c.lower(): c for c in df.columns}
             if {"z", "et", "ep"} <= set(cols_lower):
                 zc, etc, epc = cols_lower["z"], cols_lower["et"], cols_lower["ep"]
                 st.caption(
-                    "**This reproduces the paper's SI Fig. S6(b)** (T-shaped "
-                    "contact: left panel; slipped-parallel contact: right "
-                    "panel) — variation in interaction energy with "
-                    "long-axis sliding z, for pentacene. Et(z) and Ep(z) are "
-                    "independent dimer scans (T-shaped neighbor at (a/2, "
-                    "b/2, z); slipped-parallel neighbor at (0, b, z)). Note "
-                    "there's no single '4·Et+2·Ep' curve to show here in "
-                    "general -- that combination only holds for the "
-                    "glide-symmetric G-form (same z on every contact); the "
-                    "Fig. 5(b)-style map below combines Et/Ep at "
+                    "Et(z) and Ep(z) are independent dimer scans (T-shaped "
+                    "neighbor at (a/2, b/2, z); slipped-parallel neighbor at "
+                    "(0, b, z)). Note there's no single '4·Et+2·Ep' curve to "
+                    "show here in general -- that combination only holds for "
+                    "the glide-symmetric G-form (same z on every contact); "
+                    "the Fig. 5(b)-style map below combines Et/Ep at "
                     "*independent* z per contact to cover the N-form too."
                 )
                 _s2_default = (
@@ -1328,7 +1330,7 @@ with tab_step3:
             "of the marked local minima) to preview the two-layer structure "
             "and download it as a starting point for the DFT step below."
         )
-        st.caption(
+        st.info(
             "**This reproduces the upper panel of the paper's Fig. 6(b) "
             "(R-form pentacene, Type I) — the interlayer unit-cell volume "
             "map V(x, y).** Defaults: a=7.2 Å, b=6.0 Å, alpha=25°, Rt=Rp=0 Å "
@@ -1612,7 +1614,7 @@ with tab_step3:
             "preview the two-layer structure and download it as a starting "
             "point for the DFT step below."
         )
-        st.caption(
+        st.info(
             "**This reproduces the upper panel of the paper's Fig. 6(c) "
             "(G-form naphthalene, Type III) — the interlayer unit-cell "
             "volume map V(x, y).** Defaults: a=7.5 Å, b=5.8 Å, alpha=25°, "
