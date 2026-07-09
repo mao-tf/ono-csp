@@ -1358,11 +1358,25 @@ with tab_step3:
             # as the bundled-sample sections elsewhere in this app -- but
             # only when nothing has been scanned yet this session, so it
             # never overrides a scan the user already ran or is about to
-            # change inputs for.
+            # change inputs for. Gated on pentacene specifically: the
+            # default (a, b, alpha) above are pentacene's own lattice
+            # constants, so auto-running them against a different
+            # molecule's atoms would show a physically wrong structure.
             auto_run = (
                 "s3vdw_df" not in st.session_state
                 and mol3.name == "pentacene"
             )
+            if (
+                "s3vdw_df" not in st.session_state
+                and mol3.name != "pentacene"
+            ):
+                st.info(
+                    f"The default inputs above are pentacene's Fig. 6(b) "
+                    f"values, but **{mol3.name}** is currently selected -- "
+                    "select pentacene in the picker above to see that "
+                    f"default map, or just click Run below to scan "
+                    f"{mol3.name} with the current inputs instead."
+                )
             if auto_run or st.button(f"Run interlayer vdW scan ({mol3.name})", key="s3vdw_run"):
                 with st.spinner("Scanning..."):
                     df_vdw = interlayer_vdw_scan(
@@ -1638,6 +1652,17 @@ with tab_step3:
                 "s3twist_df" not in st.session_state
                 and mol3t.name == "naphthalene"
             )
+            if (
+                "s3twist_df" not in st.session_state
+                and mol3t.name != "naphthalene"
+            ):
+                st.info(
+                    f"The default inputs above are naphthalene's Fig. 6(c) "
+                    f"values, but **{mol3t.name}** is currently selected -- "
+                    "select naphthalene in the picker above to see that "
+                    f"default map, or just click Run below to scan "
+                    f"{mol3t.name} with the current inputs instead."
+                )
             if auto_run_t or st.button(f"Run interlayer vdW scan ({mol3t.name})", key="s3twist_run"):
                 with st.spinner("Scanning..."):
                     df_vdw_t = interlayer_vdw_scan(
