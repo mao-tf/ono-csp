@@ -929,7 +929,7 @@ with tab_step2:
         )
 
         st.divider()
-        st.subheader("Results — Et / Ep vs z  (step2_para.csv)")
+        st.subheader("Fig. S6(b)-style: Et / Ep vs z  (step2_para.csv)")
         df, src = load_results_csv("s2_results", "step2_para.csv")
         if df is not None:
             source_badge(src)
@@ -1318,7 +1318,7 @@ with tab_step3:
     sub_para3, sub_twist3 = st.tabs(["para", "twist (→ Type III)"])
 
     with sub_para3:
-        st.subheader("vdW pre-scan — runs in this GUI")
+        st.subheader("Fig. 6(b)-style: vdW pre-scan — runs in this GUI")
         st.caption(
             "Rigid-sphere interlayer contact model — a fast, vectorized "
             "reimplementation (not a call into legacy step3_para_vdw.py "
@@ -1604,7 +1604,7 @@ with tab_step3:
             )
 
     with sub_twist3:
-        st.subheader("vdW pre-scan — runs in this GUI")
+        st.subheader("Fig. 6(c)-style: vdW pre-scan — runs in this GUI")
         st.caption(
             "Same rigid-sphere interlayer contact model as Tab 4 para's vdW "
             "pre-scan, but with the twist torsion A2 applied to both "
