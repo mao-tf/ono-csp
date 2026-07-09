@@ -1324,6 +1324,12 @@ with tab_step3:
             "of the marked local minima) to preview the two-layer structure "
             "and download it as a starting point for the DFT step below."
         )
+        st.caption(
+            "**Default inputs below reproduce Fig. 6(b): pentacene R-form "
+            "(Type I)** — a=7.2 Å, b=6.0 Å, alpha=25°, Rt=Rp=0 Å (no "
+            "long-axis shift, glide-symmetric, no torsion), from the "
+            "paper's SI Table S2 (Pentacene Type I, 'calc' row)."
+        )
         mol3 = st.session_state.get("molecule")
         s1_current = st.session_state.get("s1vdw_current") or {}
         # Fallback defaults: pentacene's R-form (Type I) parameters from the
@@ -1582,6 +1588,17 @@ with tab_step3:
             "no separate Rp). Click a point (or a marked local minimum) to "
             "preview the two-layer structure and download it as a starting "
             "point for the DFT step below."
+        )
+        st.caption(
+            "**Default inputs below reproduce Fig. 6(c): naphthalene G-form "
+            "(Type III, before the twist optimization of Fig. 7/§2.4)** — "
+            "a=5.8 Å, b=7.5 Å, alpha=65°, Rt=1.6 Å, A2=0° (glide-symmetric, "
+            "untwisted), from the paper's SI Table S1 (Naphthalene Type "
+            "III, 'calc' row, ΔZT). Note: ΔZT there is technically the "
+            "*post*-twist-optimization value (the paper doesn't separately "
+            "publish the pre-twist Rt), so this is a close approximation, "
+            "not an exact reproduction — the resulting map's minimum "
+            "(Ra≈1.0) doesn't land exactly on the paper's stated (1.9, 0)."
         )
         mol3t = st.session_state.get("molecule")
         # Defaults are naphthalene's Fig. 6(c) G-form parameters (paper SI
