@@ -1609,28 +1609,34 @@ with tab_step3:
         st.caption(
             "**Default inputs below reproduce Fig. 6(c): naphthalene G-form "
             "(Type III, before the twist optimization of Fig. 7/§2.4)** — "
-            "a=5.8 Å, b=7.5 Å, alpha=65°, Rt=1.6 Å, A2=0° (glide-symmetric, "
-            "untwisted), from the paper's SI Table S1 (Naphthalene Type "
-            "III, 'calc' row, ΔZT). Note: ΔZT there is technically the "
-            "*post*-twist-optimization value (the paper doesn't separately "
-            "publish the pre-twist Rt), so this is a close approximation, "
-            "not an exact reproduction — the resulting map's minimum "
-            "(Ra≈1.0) doesn't land exactly on the paper's stated (1.9, 0)."
+            "a=7.5 Å, b=5.8 Å, alpha=25°, Rt=1.6 Å, A2=0° (glide-symmetric, "
+            "untwisted). The paper's SI Table S1 lists this as alpha=65° "
+            "with a=5.8, b=7.5, but that's the *same physical structure* "
+            "under the acene fold symmetry (alpha↔90−alpha with a↔b "
+            "swapped); Fig. 6(c) — like the paper's Fig. 2(b)/Fig. S4, which "
+            "show stable packings at alpha<45° — plots it in the alpha=25° "
+            "orientation (wider a-axis horizontal), so we use that here to "
+            "match the figure. Note: ΔZT=1.6 is the *post*-twist value "
+            "(the paper doesn't separately publish the pre-twist Rt), so "
+            "the map's minimum lands near (Ra≈1.2, 0), close to but not "
+            "exactly the paper's stated (1.9, 0)."
         )
         mol3t = st.session_state.get("molecule")
-        # Defaults are naphthalene's Fig. 6(c) G-form parameters (paper SI
-        # Table S1, Type III calc row: a=5.8, b=7.5, alpha=65, ΔZT=1.6),
-        # A2=0 since Fig. 6(c)'s V(x,y) map itself is computed *before* the
-        # twist optimization introduced in Fig. 7/Sect. 2.4. Like Tab 4 para,
-        # these are fixed literals -- deliberately NOT inheriting Tab 3
-        # twist's s4a_current, which is auto-populated with Tab 3's own
-        # min-E sample point (a=6.0, b=7.2) the instant that map renders and
-        # would otherwise silently override these Fig. 6(c) values.
+        # Defaults are naphthalene's Fig. 6(c) G-form parameters. SI Table S1
+        # gives them as alpha=65, a=5.8, b=7.5, but Fig. 6(c) (and Fig. 2b /
+        # Fig. S4, which display stable packings at alpha<45) plot the
+        # fold-equivalent alpha=25 orientation with a>b -- otherwise the
+        # V(x,y) map comes out transposed vs the figure (x-axis narrower than
+        # y instead of wider). So use a=7.5, b=5.8, alpha=25 here. A2=0 since
+        # Fig. 6(c) is computed before the twist optimization of Fig. 7/§2.4.
+        # Fixed literals like Tab 4 para -- deliberately NOT inheriting Tab 3
+        # twist's s4a_current (auto-populated with Tab 3's own min-E sample
+        # point, which would silently override these Fig. 6(c) values).
         c1t, c2t, c3t = st.columns(3)
-        s3t_a = c1t.number_input("a (Å)", value=5.8, key="s3twist_a")
-        s3t_b = c2t.number_input("b (Å)", value=7.5, key="s3twist_b")
+        s3t_a = c1t.number_input("a (Å)", value=7.5, key="s3twist_a")
+        s3t_b = c2t.number_input("b (Å)", value=5.8, key="s3twist_b")
         s3t_theta = c3t.number_input(
-            "alpha (deg, from Step 1)", value=65.0, key="s3twist_theta",
+            "alpha (deg, from Step 1)", value=25.0, key="s3twist_theta",
         )
         c4t, c5t = st.columns(2)
         s3t_rt = c4t.number_input(
