@@ -36,7 +36,7 @@ def translation(xyzR_array,vx,vy,vz):
         
 def mk_xyz(auto_dir,monomer_name,params_dict,I):## I = 1,2,3
     a_ = params_dict['a']; b_ = params_dict['b']; cx=params_dict['cx'];cy=params_dict['cy'];cz=params_dict['cz']
-    A2 = params_dict['A2']; A3 = params_dict['theta']
+    A2 = params_dict['A2']; A3 = params_dict['alpha']
     Rt = params_dict['Rt']; Rp = params_dict['Rp']
     
     monomer_array_c1 = get_monomer_xyzR(monomer_name,0,0,0,A2,A3)
@@ -125,7 +125,7 @@ def init_process(args):
     os.makedirs(auto_dir, exist_ok=True)
     params_path=os.path.join(auto_dir,'params.csv')
     df_init=pd.read_csv(params_path)
-    params_dict = df_init.loc[0,['cx','cy','cz','a','b','theta','Rt','Rp','A2']].to_dict()
+    params_dict = df_init.loc[0,['cx','cy','cz','a','b','alpha','Rt','Rp','A2']].to_dict()
     for I in range(1,4):
         mk_xyz(auto_dir,monomer_name,params_dict,I)
 
