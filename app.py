@@ -1325,10 +1325,12 @@ with tab_step3:
             "and download it as a starting point for the DFT step below."
         )
         st.caption(
-            "**Default inputs below reproduce Fig. 6(b): pentacene R-form "
-            "(Type I)** — a=7.2 Å, b=6.0 Å, alpha=25°, Rt=Rp=0 Å (no "
-            "long-axis shift, glide-symmetric, no torsion), from the "
-            "paper's SI Table S2 (Pentacene Type I, 'calc' row)."
+            "**This reproduces the upper panel of the paper's Fig. 6(b) "
+            "(R-form pentacene, Type I) — the interlayer unit-cell volume "
+            "map V(x, y).** Defaults: a=7.2 Å, b=6.0 Å, alpha=25°, Rt=Rp=0 Å "
+            "(no long-axis shift, glide-symmetric, no torsion), from the "
+            "paper's SI Table S2 (Pentacene Type I, 'calc' row). The volume "
+            "minimum comes out near (x, y)=(±1.8, 0), matching the paper."
         )
         mol3 = st.session_state.get("molecule")
         # Defaults are pentacene's R-form (Type I) parameters from the paper's
@@ -1607,37 +1609,37 @@ with tab_step3:
             "point for the DFT step below."
         )
         st.caption(
-            "**Default inputs below reproduce Fig. 6(c): naphthalene G-form "
-            "(Type III, before the twist optimization of Fig. 7/§2.4)** — "
-            "a=5.8 Å, b=7.5 Å, alpha=65°, Rt=1.6 Å, A2=0° (glide-symmetric, "
-            "untwisted), exactly the values the paper's SI Table S1 lists "
-            "(Naphthalene Type III, 'calc' row, ΔZT) and that Ono's own "
-            "calculation used to produce Fig. 6(c). (Unlike Tab 2's Fig. "
-            "2(b), these can't be re-expressed at alpha=25° by the a↔b fold: "
-            "with a nonzero long-axis shift Rt the ΔZT enters only the "
-            "a-direction, so a and b are no longer interchangeable.) Note: "
-            "ΔZT=1.6 is the *post*-twist value (the paper doesn't separately "
-            "publish the pre-twist Rt), so the map's minimum lands near "
-            "(Ra≈1.0, 0), close to but not exactly the paper's stated "
-            "(1.9, 0)."
+            "**This reproduces the upper panel of the paper's Fig. 6(c) "
+            "(G-form naphthalene, Type III) — the interlayer unit-cell "
+            "volume map V(x, y).** Defaults: a=7.5 Å, b=5.8 Å, alpha=25°, "
+            "Rt (ΔZT)=1.6 Å, A2=0° (glide-symmetric, untwisted; Fig. 6(c) "
+            "is computed before the Fig. 7/§2.4 twist). These are the SI "
+            "Table S1 naphthalene Type III values (a=5.8, b=7.5, alpha=65°) "
+            "written in the a>b / alpha<45° orientation the figure is drawn "
+            "in — matching its aspect ratio (wider x-axis) and its volume "
+            "minimum near (x, y)=(1.9, 0). (The two orientations are the "
+            "acene a↔b relabeling; because a nonzero ΔZT makes a and b "
+            "inequivalent in the interlayer scan, only this one lines up "
+            "with the figure.) The color/shading won't match the paper "
+            "exactly: the published ΔZT=1.6 is the *post*-twist value, and "
+            "our color scale is auto-ranged rather than the paper's fixed "
+            "one."
         )
         mol3t = st.session_state.get("molecule")
-        # Defaults are naphthalene's Fig. 6(c) G-form parameters, exactly as
-        # SI Table S1 lists them and as Ono's own calc used: a=5.8, b=7.5,
-        # alpha=65, ΔZT=1.6. A2=0 since Fig. 6(c) is computed before the
-        # twist optimization of Fig. 7/§2.4. NOTE: do NOT "simplify" this to
-        # the alpha=25 / a<->b-swapped form -- that fold is only a symmetry
-        # of the intralayer layer (Rt=0); here Rt goes into a_vec's z
-        # component only (a_vec=[a,0,2*Rt-Rp]), so swapping a and b gives a
-        # physically different structure (verified: different min-z). Fixed
-        # literals like Tab 4 para -- deliberately NOT inheriting Tab 3
-        # twist's s4a_current (auto-populated with Tab 3's own min-E sample
-        # point, which would silently override these Fig. 6(c) values).
+        # Fig. 6(c) naphthalene G-form. SI Table S1 lists a=5.8, b=7.5,
+        # alpha=65; we enter the a>b / alpha=25 relabeling (a=7.5, b=5.8)
+        # because that's the orientation the figure is drawn in -- verified
+        # against the paper that its aspect ratio and volume minimum (~1.9,0)
+        # match this one, not the a<b one. (The interlayer scan is NOT
+        # symmetric under a<->b when Rt!=0 -- Rt enters a_vec's z only -- so
+        # the two orientations give different maps; this is the one that
+        # matches Fig. 6(c).) A2=0: pre-twist. Fixed literals like Tab 4
+        # para -- deliberately NOT inheriting Tab 3 twist's s4a_current.
         c1t, c2t, c3t = st.columns(3)
-        s3t_a = c1t.number_input("a (Å)", value=5.8, key="s3twist_a")
-        s3t_b = c2t.number_input("b (Å)", value=7.5, key="s3twist_b")
+        s3t_a = c1t.number_input("a (Å)", value=7.5, key="s3twist_a")
+        s3t_b = c2t.number_input("b (Å)", value=5.8, key="s3twist_b")
         s3t_theta = c3t.number_input(
-            "alpha (deg, from Step 1)", value=65.0, key="s3twist_theta",
+            "alpha (deg, from Step 1)", value=25.0, key="s3twist_theta",
         )
         c4t, c5t = st.columns(2)
         s3t_rt = c4t.number_input(
@@ -1868,7 +1870,10 @@ with tab_step3:
                 )
                 a2_er, e_er = cl_er["a2"], cl_er["e"]
                 best_intra = df_intra_d.loc[df_intra_d.groupby(a2_id)[e_id].idxmin()].set_index(a2_id)
-                best_inter = df.loc[df.groupby(a2_er)[e_er].idxmin()].set_index(a2_er)[e_er]
+                # keep the whole interlayer min-E row (not just E) so we can
+                # read its optimized c-vector (cx, cy, cz) for the 3D preview.
+                best_inter = df.loc[df.groupby(a2_er)[e_er].idxmin()].set_index(a2_er)
+                cxc, cyc, czc = cl_er.get("cx"), cl_er.get("cy"), cl_er.get("cz")
                 common_a2 = sorted(set(best_intra.index) & set(best_inter.index))
                 if not common_a2:
                     st.warning("No shared A2 values between the two CSVs -- can't join.")
@@ -1876,11 +1881,17 @@ with tab_step3:
                     df_total = pd.DataFrame({
                         "A2": common_a2,
                         "Eintra": [float(best_intra.loc[a2, e_id]) for a2 in common_a2],
-                        "Einter": [float(best_inter.loc[a2]) for a2 in common_a2],
+                        "Einter": [float(best_inter.loc[a2, e_er]) for a2 in common_a2],
                         "a": [float(best_intra.loc[a2, a_id]) for a2 in common_a2],
                         "b": [float(best_intra.loc[a2, b_id]) for a2 in common_a2],
                         "Rt": [float(best_intra.loc[a2, rt_id]) for a2 in common_a2],
                     })
+                    # Interlayer c-vector at each A2's optimum (for the
+                    # bilayer 3D preview). Absent columns -> NaN, preview
+                    # falls back to a dimer.
+                    df_total["cx"] = [float(best_inter.loc[a2, cxc]) if cxc else float("nan") for a2 in common_a2]
+                    df_total["cy"] = [float(best_inter.loc[a2, cyc]) if cyc else float("nan") for a2 in common_a2]
+                    df_total["cz"] = [float(best_inter.loc[a2, czc]) if czc else float("nan") for a2 in common_a2]
                     thc_d = cl_id.get("alpha", cl_id.get("theta"))
                     df_total["theta"] = (
                         [float(best_intra.loc[a2, thc_d]) for a2 in common_a2] if thc_d
@@ -1931,6 +1942,7 @@ with tab_step3:
                                         "a2": float(r["A2"]), "rt": float(r["Rt"]),
                                         "a": float(r["a"]), "b": float(r["b"]),
                                         "theta": float(r["theta"]),
+                                        "cx": float(r["cx"]), "cy": float(r["cy"]), "cz": float(r["cz"]),
                                         "total": float(r["Total_rel"]), "eintra": float(r["Eintra_rel"]),
                                         "einter": float(r["Einter_rel"]),
                                         "label": f"clicked: A2={r['A2']} Rt={r['Rt']}",
@@ -1955,6 +1967,7 @@ with tab_step3:
                                     "a2": float(best_d["A2"]), "rt": float(best_d["Rt"]),
                                     "a": float(best_d["a"]), "b": float(best_d["b"]),
                                     "theta": float(best_d["theta"]),
+                                    "cx": float(best_d["cx"]), "cy": float(best_d["cy"]), "cz": float(best_d["cz"]),
                                     "total": float(best_d["Total_rel"]), "eintra": float(best_d["Eintra_rel"]),
                                     "einter": float(best_d["Einter_rel"]),
                                     "label": f"default (min Total E): A2={best_d['A2']} Rt={best_d['Rt']}",
@@ -1967,15 +1980,38 @@ with tab_step3:
                                 f"ΔEint(near)={current_d['einter']:.2f} "
                                 "(all relative to A2=0)"
                             )
-                            c_i_d, c_j_d = dimer(
-                                mol2, "t", current_d["a"], current_d["b"], current_d["theta"],
-                                A2=current_d["a2"], z=current_d["rt"],
-                            )
-                            render_molecule_3d(
-                                list(mol2.symbols) * 2, np.vstack([c_i_d, c_j_d]),
-                                f"{mol2.name} twist dimer A2={current_d['a2']} Rt={current_d['rt']}",
-                                key_suffix="s4d", style_key="s4d_style",
-                            )
+                            # Total E is the intralayer layer + interlayer
+                            # stack, so preview the full interlayer picture
+                            # (Fig. 6(e)-style): the 9-molecule underlayer
+                            # cluster + 1 overlayer molecule at the optimized
+                            # c-vector, if that CSV carried cx, cy, cz.
+                            cvec = (current_d.get("cx"), current_d.get("cy"), current_d.get("cz"))
+                            if all(v is not None and np.isfinite(v) for v in cvec):
+                                syms_d, coords_d = bilayer_preview(
+                                    mol2, current_d["a"], current_d["b"], current_d["theta"],
+                                    current_d["rt"], 0.0,
+                                    current_d["cx"], current_d["cy"], current_d["cz"],
+                                    A2=current_d["a2"],
+                                    radii_overrides=st.session_state.get("vdw_radii_overrides"),
+                                )
+                                render_molecule_3d(
+                                    syms_d, coords_d,
+                                    f"{mol2.name} twisted bilayer A2={current_d['a2']} "
+                                    f"c=({current_d['cx']},{current_d['cy']},{current_d['cz']})",
+                                    key_suffix="s4d", style_key="s4d_style",
+                                )
+                            else:
+                                # No c-vector in the CSV -- fall back to the
+                                # intralayer T-dimer at this twist.
+                                c_i_d, c_j_d = dimer(
+                                    mol2, "t", current_d["a"], current_d["b"], current_d["theta"],
+                                    A2=current_d["a2"], z=current_d["rt"],
+                                )
+                                render_molecule_3d(
+                                    list(mol2.symbols) * 2, np.vstack([c_i_d, c_j_d]),
+                                    f"{mol2.name} twist dimer A2={current_d['a2']} Rt={current_d['rt']}",
+                                    key_suffix="s4d", style_key="s4d_style",
+                                )
 
         st.divider()
         st.subheader("Interlayer scan detail  (step3_twist.csv)")
