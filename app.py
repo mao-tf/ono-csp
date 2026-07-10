@@ -782,10 +782,15 @@ with tab_step1:
     )
 
     st.divider()
-    st.subheader("DFT results — alpha vs E_intra(8)  (step1.csv)")
+    st.subheader("Fig. 2(b)-style: DFT results — alpha vs E_intra(8)  (step1.csv)")
     df, src = load_results_csv("s1dft_results", "step1.csv")
     if df is not None:
         source_badge(src)
+        st.info(
+            "**This reproduces the paper's Fig. 2(b)** — E_intra(8) vs "
+            "alpha for pentacene, showing the HB/PS/CH branches and "
+            "identifying the R-form global minimum (alpha ≈ 25°)."
+        )
         st.caption(
             "E = 4·E_t + 2·E_p1 + 2·E_p2 (kcal/mol). Its global minimum "
             "identifies the R-form (alpha ≈ 25°)."
@@ -801,8 +806,8 @@ with tab_step1:
             "Polyacenes are also exactly symmetric under alpha -> "
             "90-alpha with a/b swapped (same physical structure, axes "
             "relabeled), so a scan run only up to alpha=45 is reflected "
-            "to cover the full range, matching the paper's Fig. 2(b). "
-            "Click a point for its 9-molecule structure."
+            "to cover the full range. Click a point for its 9-molecule "
+            "structure."
         )
         if "alpha" not in df.columns and "theta" not in df.columns:
             st.warning("Expected an 'alpha' column in this CSV to classify branches.")
@@ -1587,10 +1592,19 @@ with tab_step3:
         )
 
         st.divider()
-        st.subheader("Results — interlayer energy map  (step3_para.csv)")
+        st.subheader("Fig. 6(b)-style (lower panel): interlayer energy map  (step3_para.csv)")
         df, src = load_results_csv("s3_results", "step3_para.csv")
         if df is not None:
             source_badge(src)
+            st.info(
+                "**DFT-D-refined analog of the paper's Fig. 6(b) lower "
+                "panel** — E_inter(7) at each hill-climbed (cx, cy). Note: "
+                "the paper's own lower panel is a 1D line plot along the "
+                "local-minimum valley found in the upper (vdW) panel; here "
+                "we show a 2D map instead, since the hill-climb only visits "
+                "a handful of scattered points rather than scanning the "
+                "whole valley."
+            )
             heatmap_section(
                 df, "s3_map",
                 x_candidates=["cx", "x"],
