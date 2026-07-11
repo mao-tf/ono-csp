@@ -767,15 +767,25 @@ with tab_step1:
         ),
         prepare=(
             "- `step1_init_params.csv` (columns: `a, b, alpha, status`) — "
-            "generated automatically by `--init` below, using the same vdW "
-            "model as the pre-scan above. You don't need to write this by hand."
+            "the candidate (a, b) starting points for the hill-climb, one "
+            "row per alpha. Two ways to get one: pass `--init` below and "
+            "`step1.py` builds it itself from its own vdW model, or drop "
+            "in the \"Download step1_init_params.csv\" file from the "
+            "pre-scan above instead. **Either way, `--init` "
+            "unconditionally overwrites whatever `step1_init_params.csv` "
+            "is already sitting in `--auto-dir`** — if you've placed the "
+            "downloaded one there, omit `--init` so it's actually used. "
+            "Without `--init` and with no `step1_init_params.csv` in "
+            "`--auto-dir` yet, `step1.py` errors out immediately (it "
+            "only reads the file in that case, never creates it)."
         ),
         setup=_SETUP_MONOMER_ENV + "\n" + _SETUP_SCHEDULER,
         command=(
             "python step1.py --init --auto-dir /path/to/workdir "
             "--monomer-name pentacene \\\n    --num-nodes 4 --num-init 2\n"
             "# --init (re)builds step1_init_params.csv; omit it on later runs\n"
-            "# to keep hill-climbing from where step1.csv left off."
+            "# -- including to resume/continue -- since it resets progress\n"
+            "# tracking (a, b, alpha, status) back to \"NotYet\" for every row."
         ),
         output="`<auto-dir>/step1.csv` — columns `a, b, alpha, E, E_p1, E_p2, E_t, status, file_name`.",
         scripts_files="`step1.py`, `make_step1.py`, and `utils.py`",
