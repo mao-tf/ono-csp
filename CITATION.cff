@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "csp: Crystal structure prediction for layered herringbone polyacene packings"
+authors:
+  - family-names: Miyoshi
+    given-names: Mao
+  - family-names: Ono
+    given-names: Ryota
+version: 0.1.0
+date-released: "2026-07-12"
+repository-code: "https://github.com/mao-tf/ono-csp"
+license: MIT

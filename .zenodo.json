@@ -1,0 +1,11 @@
+{
+  "title": "csp: Crystal structure prediction for layered herringbone polyacene packings",
+  "description": "Reproduction of the crystal structure prediction pipeline from Ono et al. (JACS, submitted) for herringbone-packed polyacene crystals.",
+  "creators": [
+    {"name": "Miyoshi, Mao"},
+    {"name": "Ono, Ryota"}
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "access_right": "open"
+}
