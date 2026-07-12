@@ -1,5 +1,7 @@
 # csp — Crystal Structure Prediction for Polyacenes
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21321392.svg)](https://doi.org/10.5281/zenodo.21321392)
+
 A Python package + Streamlit GUI that reproduces the stepwise crystal
 structure prediction pipeline of Ono et al., *"Origin of Layered
 Herringbone Packing and Polymorphism in Polyacenes: A Quantum Chemical
