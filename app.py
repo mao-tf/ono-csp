@@ -4,7 +4,7 @@
 Usage:
   streamlit run app.py
 
-Reproduces the structure-search pipeline of Ono et al. (JACS, submitted).
+Reproduces the structure-search pipeline of Ono et al. (Commun. Chem., submitted).
 See spec.md for the full method-to-tab mapping and for how each tab maps to
 Ono's legacy scripts (legacy/ono_scripts/).
 
@@ -62,9 +62,10 @@ LEGACY_DIR = "legacy/ono_scripts/stepwise_optimization"
 st.set_page_config(page_title="csp — Crystal Structure Prediction", layout="wide")
 st.title("csp — Crystal Structure Prediction")
 st.caption(
-    "Reproduces Ono et al., \"Origin of Layered Herringbone Packing and "
-    "Polymorphism in Polyacenes\" (JACS, submitted). See the project "
-    "README for a full tab-by-tab guide."
+    "Reproduces Ono et al., \"Stepwise Quantum-Chemical Optimization "
+    "Reveals the Origin of Layered Herringbone Packing and Polymorphism "
+    "in Polyacenes\" (Commun. Chem., submitted). See the project README "
+    "for a full tab-by-tab guide."
 )
 
 
