@@ -1,6 +1,6 @@
 {
   "title": "csp: Crystal structure prediction for layered herringbone polyacene packings",
-  "description": "Reproduction of the crystal structure prediction pipeline from Ono et al. (Commun. Chem., submitted) for herringbone-packed polyacene crystals.",
+  "description": "Reproduction of the crystal structure prediction pipeline from Ono et al., \"Stepwise Quantum-Chemical Optimization Reveals the Origin of Layered Herringbone Packing and Polymorphism in Polyacenes\" (Commun. Chem., submitted). Includes both the csp Python/Streamlit package and Ono's original DFT-D optimization scripts (legacy/ono_scripts/).",
   "creators": [
     {"name": "Miyoshi, Mao"},
     {"name": "Ono, Ryota"}
