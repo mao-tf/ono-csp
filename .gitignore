@@ -1,6 +1,7 @@
 *.pdf
 memo*.txt
 paper_summary.txt
+*docx
 
 # Internal working notes: session logs / debugging history / paper
 # section-by-section mapping (reveals unpublished paper content and
